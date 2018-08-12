@@ -1,4 +1,5 @@
 from rest_framework.response import Response
+from rest_framework import status
 from rest_framework import generics
 from api.v1.serializers import *
 import django_filters
@@ -12,6 +13,7 @@ import pytz
 import json
 from rest_framework.decorators import api_view
 from django.conf import settings
+from django.db.models.functions import Coalesce
 
 
 class UserList(generics.ListAPIView):
@@ -98,15 +100,37 @@ class InventoryList(generics.ListAPIView):
   serializer_class = InventorySerializer
 
   def get_queryset(self):
-    queryset = Product.objects.all().annotate(in_progress_amount=Sum('batch_items__amount', filter=Q(batch_items__batch__status='i')))
-    queryset = queryset.annotate(completed_amount=Sum('batch_items__amount', filter=Q(batch_items__batch__status='c')))
-    queryset = queryset.annotate(received_amount_total=Sum('received_inventory__amount'))
+    queryset = Product.objects.all().annotate(in_progress_amount=Coalesce(Sum('batch_items__amount', filter=Q(batch_items__batch__status='i')), 0))
+    queryset = queryset.annotate(completed_amount=Coalesce(Sum('batch_items__amount', filter=Q(batch_items__batch__status='c')), 0))
+    queryset = queryset.annotate(received_amount_total=Coalesce(Sum('received_inventory__amount'), 0))
     queryset = queryset.annotate(received_amount=F('received_amount_total')-F('in_progress_amount')-F('completed_amount'))
     # TODO: received amount also needs to subtract the amount that is being used as an ingredient to something else in progress/completed
     queryset = queryset.values('id', 'in_progress_amount', 'completed_amount', 'received_amount')
     return queryset
 
 
+# takes in data of the format:
+# received: [{"product_id": 2, "amount": 2.3}, {"product_id": 4, "amount": 6}]
+# {"received": [{"product_id": 2, "amount": 2.3}, {"product_id": 4, "amount": 6}]}
+# so you can submit as many received items as you want at the same time and it will create them all
+class ReceivedInventoryList(generics.ListCreateAPIView):
+  queryset = ReceivedInventory.objects.all()
+  serializer_class = ReceivedInventorySerializer
+
+  def create(self, request, *args, **kwargs):
+        listofReceived = request.data['received']
+
+        serializer = self.get_serializer(data=listofReceived, many=True)
+        if serializer.is_valid():
+            serializer.save()
+            headers = self.get_success_headers(serializer.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED,
+                            headers=headers)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class ReceivedInventoryDetail(generics.RetrieveUpdateDestroyAPIView):
+  queryset = ReceivedInventory.objects.all()
+  serializer_class = ReceivedInventorySerializer
 
 # class UserProfileList(generics.ListAPIView):
 #   queryset = UserProfile.objects.all()

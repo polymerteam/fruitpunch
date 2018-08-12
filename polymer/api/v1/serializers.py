@@ -127,6 +127,19 @@ class InventorySerializer(serializers.ModelSerializer):
 		fields = ('id', 'product', 'in_progress_amount', 'completed_amount', 'received_amount')
 
 
+class ReceivedInventorySerializer(serializers.ModelSerializer):
+	product = ProductSerializer(read_only=True)
+	product_id = serializers.PrimaryKeyRelatedField(source='product', queryset=Product.objects.all(), write_only=True)
+	
+	def __init__(self, *args, **kwargs):
+		many = kwargs.pop('many', True)
+		super(ReceivedInventorySerializer, self).__init__(many=many, *args, **kwargs)
+
+	class Meta:
+		model = ReceivedInventory
+		fields = ('id', 'product', 'product_id', 'amount', 'received_at', 'is_trashed')
+
+
 # class UserProfileSerializer(serializers.ModelSerializer):
 # 	user_id = serializers.CharField(source='user.id', read_only=True)
 # 	username = serializers.CharField(source='user.username', read_only=True)
