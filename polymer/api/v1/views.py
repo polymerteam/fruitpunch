@@ -36,6 +36,16 @@ class RecipeList(generics.ListCreateAPIView):
   queryset = Recipe.objects.all()
   serializer_class = RecipeSerializer
 
+
+# this takes in a product to define a recipe in, the recipe batch size, and a list of products used as ingredients and their amounts
+# request data:
+# product_id: 6
+# default_batch_size: 2.5
+# ingredients_data: [{"product":"2","amount":"0.5"},{"product":"3","amount":"2"}]
+class RecipeCreateWithIngredients(generics.ListCreateAPIView):
+    queryset = Recipe.objects.all()
+    serializer_class = RecipeCreateWithIngredientsSerializer
+
 class RecipeDetail(generics.RetrieveUpdateDestroyAPIView):
   queryset = Recipe.objects.all()
   serializer_class = RecipeSerializer

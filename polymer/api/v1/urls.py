@@ -10,6 +10,7 @@ urlpatterns = [
     url(r'^products/(?P<pk>[0-9]+)/$', views.ProductDetail.as_view()),
 
     url(r'^recipes/$', views.RecipeList.as_view()),
+    url(r'^recipes/create-with-ingredients/$', views.RecipeCreateWithIngredients.as_view()),
     url(r'^recipes/(?P<pk>[0-9]+)/$', views.RecipeDetail.as_view()),
 
     url(r'^ingredients/$', views.IngredientList.as_view()),

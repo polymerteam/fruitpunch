@@ -8,6 +8,8 @@ from datetime import date, datetime, timedelta
 import operator
 import pytz
 import re
+import json
+
 
 class UserSerializer(serializers.ModelSerializer):
 	class Meta:
@@ -37,6 +39,29 @@ class RecipeSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = Recipe
 		fields = ('id', 'product', 'product_id', 'default_batch_size', 'is_trashed', 'created_at', 'ingredients')
+
+class RecipeCreateWithIngredientsSerializer(serializers.ModelSerializer):
+	product = ProductSerializer(read_only=True)
+	product_id = serializers.PrimaryKeyRelatedField(source='product', queryset=Product.objects.all(), write_only=True)
+	ingredients = IngredientSerializer(many=True, read_only=True)
+	ingredients_data = serializers.CharField(write_only=True)
+
+	def create(self, validated_data):
+		print(validated_data)
+		ingredients = validated_data.pop('ingredients_data')
+		ingredients = json.loads((ingredients))#.decode("utf-8"))
+		new_recipe = Recipe.objects.create(**validated_data)
+		for ingredient in ingredients:
+			product = Product.objects.get(pk=ingredient['product'])
+			amount = ingredient['amount']
+			ing = Ingredient.objects.create(recipe=new_recipe, product=product, amount=amount)
+		return new_recipe
+
+	class Meta:
+		model = Recipe
+		extra_kwargs = {'ingredients_data': {'write_only': True}}
+		fields = ('id', 'product', 'product_id', 'default_batch_size', 'is_trashed', 'created_at', 'ingredients', 'ingredients_data')
+
 
 
 # class UserProfileSerializer(serializers.ModelSerializer):
