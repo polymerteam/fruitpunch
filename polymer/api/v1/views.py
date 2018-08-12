@@ -58,6 +58,56 @@ class IngredientDetail(generics.RetrieveUpdateDestroyAPIView):
   queryset = Ingredient.objects.all()
   serializer_class = IngredientSerializer
 
+class BatchList(generics.ListCreateAPIView):
+  # queryset = Batch.objects.all()
+  serializer_class = BatchSerializer
+
+  def get_queryset(self):
+    queryset = Batch.objects.all()
+
+    # filter by status (i = in progress, c = completed)
+    status = self.request.query_params.get('status', None)
+    if status is not None:
+      queryset = queryset.filter(status=status)
+
+    return queryset
+
+# this takes in a product to define a recipe in, the recipe batch size, and a list of products used as ingredients and their amounts
+# request data:
+# status: i/c (optional)
+# batch_items_data: [{"product":"2","amount":"3"},{"product":"3","amount":"4"}]
+class BatchCreateWithItems(generics.ListCreateAPIView):
+    queryset = Batch.objects.all()
+    serializer_class = BatchCreateWithItemsSerializer
+
+class BatchDetail(generics.RetrieveUpdateDestroyAPIView):
+  queryset = Batch.objects.all()
+  serializer_class = BatchSerializer
+
+class BatchItemList(generics.ListCreateAPIView):
+  queryset = BatchItem.objects.all()
+  serializer_class = BatchItemSerializer
+
+class BatchItemDetail(generics.RetrieveUpdateDestroyAPIView):
+  queryset = BatchItem.objects.all()
+  serializer_class = BatchItemSerializer
+
+
+
+class InventoryList(generics.ListAPIView):
+  serializer_class = InventorySerializer
+
+  def get_queryset(self):
+    queryset = Product.objects.all().annotate(in_progress_amount=Sum('batch_items__amount', filter=Q(batch_items__batch__status='i')))
+    queryset = queryset.annotate(completed_amount=Sum('batch_items__amount', filter=Q(batch_items__batch__status='c')))
+    queryset = queryset.annotate(received_amount_total=Sum('received_inventory__amount'))
+    queryset = queryset.annotate(received_amount=F('received_amount_total')-F('in_progress_amount')-F('completed_amount'))
+    # TODO: received amount also needs to subtract the amount that is being used as an ingredient to something else in progress/completed
+    queryset = queryset.values('id', 'in_progress_amount', 'completed_amount', 'received_amount')
+    return queryset
+
+
+
 # class UserProfileList(generics.ListAPIView):
 #   queryset = UserProfile.objects.all()
 #   serializer_class = UserProfileSerializer

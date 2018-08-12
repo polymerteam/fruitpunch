@@ -36,13 +36,11 @@ class Batch(models.Model):
 		('c', 'completed')
 	)
 	status = models.CharField(max_length=1, choices=STATUSES, default='i')
-
-
-	recipe = models.ForeignKey(Recipe, related_name="batches", on_delete=models.CASCADE)
-	product = models.ForeignKey(Product, related_name="batches", on_delete=models.CASCADE)
-	amount = models.DecimalField(default=1, max_digits=10, decimal_places=3)
+	# recipe = models.ForeignKey(Recipe, related_name="batches", on_delete=models.CASCADE)
+	# product = models.ForeignKey(Product, related_name="batches", on_delete=models.CASCADE)
+	# amount = models.DecimalField(default=1, max_digits=10, decimal_places=3)
 	started_at = models.DateTimeField(default=timezone.now, blank=True)
-	completed_at = models.DateTimeField(blank=True)
+	completed_at = models.DateTimeField(blank=True, null=True)
 	is_trashed = models.BooleanField(default=False, db_index=True)
 
 

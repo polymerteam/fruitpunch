@@ -16,8 +16,17 @@ urlpatterns = [
     url(r'^ingredients/$', views.IngredientList.as_view()),
     url(r'^ingredients/(?P<pk>[0-9]+)/$', views.IngredientDetail.as_view()),
 
-    # url(r'^batches/$', views.BatchList.as_view()),
-    # url(r'^batches/(?P<pk>[0-9]+)/$', views.BatchDetail.as_view()),
+    url(r'^batches/$', views.BatchList.as_view()),
+    url(r'^batches/(?P<pk>[0-9]+)/$', views.BatchDetail.as_view()),
+    url(r'^batches/create-with-items/$', views.BatchCreateWithItems.as_view()),
+
+
+    url(r'^batchitems/$', views.BatchItemList.as_view()),
+    url(r'^batchitems/(?P<pk>[0-9]+)/$', views.BatchItemDetail.as_view()),
+
+    url(r'^inventories/$', views.InventoryList.as_view()),
+
+# receive inventory
 
     # url(r'^received/$', views.ReceivedInventoryList.as_view()),
     # url(r'^received/(?P<pk>[0-9]+)/$', views.ReceivedInventoryDetail.as_view()),
