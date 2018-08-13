@@ -67,49 +67,69 @@ class RecipeCreateWithIngredientsSerializer(serializers.ModelSerializer):
 		extra_kwargs = {'ingredients_data': {'write_only': True}}
 		fields = ('id', 'product', 'product_id', 'default_batch_size', 'is_trashed', 'created_at', 'ingredients', 'ingredients_data')
 
-class BatchItemSerializer(serializers.ModelSerializer):
-	batch_id = serializers.PrimaryKeyRelatedField(source='batch', queryset=Batch.objects.all())
-	product = ProductSerializer(read_only=True)
-	active_recipe = RecipeSerializer(read_only=True)
+# class BatchItemSerializer(serializers.ModelSerializer):
+# 	batch_id = serializers.PrimaryKeyRelatedField(source='batch', queryset=Batch.objects.all())
+# 	product = ProductSerializer(read_only=True)
+# 	active_recipe = RecipeSerializer(read_only=True)
 
-	class Meta:
-		model = BatchItem
-		fields = ('id', 'batch_id', 'product', 'active_recipe', 'amount', 'is_trashed')
+# 	class Meta:
+# 		model = BatchItem
+# 		fields = ('id', 'batch_id', 'product', 'active_recipe', 'amount', 'is_trashed')
 
 
 class BatchSerializer(serializers.ModelSerializer):
-	batch_items = BatchItemSerializer(many=True, read_only=True)
-
-	class Meta:
-		model = Batch
-		fields = ('id', 'status', 'started_at', 'completed_at', 'is_trashed', 'batch_items')
-
-
-class BatchCreateWithItemsSerializer(serializers.ModelSerializer):
-	batch_items = BatchItemSerializer(many=True, read_only=True)
-	batch_items_data = serializers.CharField(write_only=True)
+	# batch_items = BatchItemSerializer(many=True, read_only=True)
+	product = ProductSerializer(read_only=True)
+	# product_id = serializers.PrimaryKeyRelatedField(source='product', queryset=Product.objects.all(), write_only=True)
+	active_recipe = RecipeSerializer(read_only=True)
 
 	def create(self, validated_data):
-		print(validated_data)
-		batch_items = validated_data.pop('batch_items_data')
-		batch_items = json.loads((batch_items))
-		new_batch = Batch.objects.create(**validated_data)
-		for batch_item in batch_items:
-			print(batch_item['product'])
-			product = Product.objects.get(pk=batch_item['product'])
-			amount = batch_item['amount']
-			active_recipe = Recipe.objects.filter(is_trashed=False, product=product)
-			if active_recipe.count() > 0:
-				active_recipe = active_recipe.first()
-			else:
-				active_recipe = None
-			b_i = BatchItem.objects.create(batch=new_batch, product=product, active_recipe=active_recipe, amount=amount)
+		product = validated_data['product']
+		active_recipe = Recipe.objects.filter(is_trashed=False, product=product)
+		if active_recipe.count() > 0:
+			active_recipe = active_recipe.first()
+		else:
+			active_recipe = None
+		new_batch = Batch.objects.create(**validated_data, active_recipe=active_recipe)
 		return new_batch
 
 	class Meta:
 		model = Batch
-		extra_kwargs = {'batch_items_data': {'write_only': True}}
-		fields = ('id', 'status', 'started_at', 'completed_at', 'is_trashed', 'batch_items', 'batch_items_data')
+		fields = ('id', 'status', 'started_at', 'completed_at', 'is_trashed', 'product', 'active_recipe', 'amount')
+
+
+	product = models.ForeignKey(Product, related_name="batch_items", on_delete=models.CASCADE)
+	active_recipe = models.ForeignKey(Recipe, related_name="batch_items", on_delete=models.CASCADE, null=True)
+	amount = models.DecimalField(default=1, max_digits=10, decimal_places=3)
+	is_trashed = models.BooleanField(default=False, db_index=True)
+
+
+
+# class BatchCreateWithItemsSerializer(serializers.ModelSerializer):
+# 	batch_items = BatchItemSerializer(many=True, read_only=True)
+# 	batch_items_data = serializers.CharField(write_only=True)
+
+# 	def create(self, validated_data):
+# 		print(validated_data)
+# 		batch_items = validated_data.pop('batch_items_data')
+# 		batch_items = json.loads((batch_items))
+# 		new_batch = Batch.objects.create(**validated_data)
+# 		for batch_item in batch_items:
+# 			print(batch_item['product'])
+# 			product = Product.objects.get(pk=batch_item['product'])
+# 			amount = batch_item['amount']
+# 			active_recipe = Recipe.objects.filter(is_trashed=False, product=product)
+# 			if active_recipe.count() > 0:
+# 				active_recipe = active_recipe.first()
+# 			else:
+# 				active_recipe = None
+# 			b_i = BatchItem.objects.create(batch=new_batch, product=product, active_recipe=active_recipe, amount=amount)
+# 		return new_batch
+
+	# class Meta:
+	# 	model = Batch
+	# 	extra_kwargs = {'batch_items_data': {'write_only': True}}
+	# 	fields = ('id', 'status', 'started_at', 'completed_at', 'is_trashed', 'batch_items', 'batch_items_data')
 
 
 
@@ -117,6 +137,7 @@ class InventorySerializer(serializers.ModelSerializer):
 	in_progress_amount = serializers.DecimalField(max_digits=10, decimal_places=3)
 	completed_amount = serializers.DecimalField(max_digits=10, decimal_places=3)
 	received_amount = serializers.DecimalField(max_digits=10, decimal_places=3)
+	asdf = serializers.DecimalField(max_digits=10, decimal_places=3)
 	product = serializers.SerializerMethodField()
 
 	def get_product(self, product):
@@ -124,7 +145,7 @@ class InventorySerializer(serializers.ModelSerializer):
 
 	class Meta:
 		model = Product
-		fields = ('id', 'product', 'in_progress_amount', 'completed_amount', 'received_amount')
+		fields = ('id', 'product', 'in_progress_amount', 'completed_amount', 'received_amount', 'asdf')
 
 
 class ReceivedInventorySerializer(serializers.ModelSerializer):

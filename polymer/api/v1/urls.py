@@ -18,11 +18,11 @@ urlpatterns = [
 
     url(r'^batches/$', views.BatchList.as_view()),
     url(r'^batches/(?P<pk>[0-9]+)/$', views.BatchDetail.as_view()),
-    url(r'^batches/create-with-items/$', views.BatchCreateWithItems.as_view()),
+    # url(r'^batches/create-with-items/$', views.BatchCreateWithItems.as_view()),
 
 
-    url(r'^batchitems/$', views.BatchItemList.as_view()),
-    url(r'^batchitems/(?P<pk>[0-9]+)/$', views.BatchItemDetail.as_view()),
+    # url(r'^batchitems/$', views.BatchItemList.as_view()),
+    # url(r'^batchitems/(?P<pk>[0-9]+)/$', views.BatchItemDetail.as_view()),
 
     url(r'^inventories/$', views.InventoryList.as_view()),
 

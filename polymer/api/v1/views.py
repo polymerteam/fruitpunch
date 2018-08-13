@@ -78,21 +78,21 @@ class BatchList(generics.ListCreateAPIView):
 # request data:
 # status: i/c (optional)
 # batch_items_data: [{"product":"2","amount":"3"},{"product":"3","amount":"4"}]
-class BatchCreateWithItems(generics.ListCreateAPIView):
-    queryset = Batch.objects.all()
-    serializer_class = BatchCreateWithItemsSerializer
+# class BatchCreateWithItems(generics.ListCreateAPIView):
+#     queryset = Batch.objects.all()
+#     serializer_class = BatchCreateWithItemsSerializer
 
 class BatchDetail(generics.RetrieveUpdateDestroyAPIView):
   queryset = Batch.objects.all()
   serializer_class = BatchSerializer
 
-class BatchItemList(generics.ListCreateAPIView):
-  queryset = BatchItem.objects.all()
-  serializer_class = BatchItemSerializer
+# class BatchItemList(generics.ListCreateAPIView):
+#   queryset = BatchItem.objects.all()
+#   serializer_class = BatchItemSerializer
 
-class BatchItemDetail(generics.RetrieveUpdateDestroyAPIView):
-  queryset = BatchItem.objects.all()
-  serializer_class = BatchItemSerializer
+# class BatchItemDetail(generics.RetrieveUpdateDestroyAPIView):
+#   queryset = BatchItem.objects.all()
+#   serializer_class = BatchItemSerializer
 
 
 
@@ -104,8 +104,10 @@ class InventoryList(generics.ListAPIView):
     queryset = queryset.annotate(completed_amount=Coalesce(Sum('batch_items__amount', filter=Q(batch_items__batch__status='c')), 0))
     queryset = queryset.annotate(received_amount_total=Coalesce(Sum('received_inventory__amount'), 0))
     queryset = queryset.annotate(received_amount=F('received_amount_total')-F('in_progress_amount')-F('completed_amount'))
+    queryset = queryset.annotate(asdf=Sum('batch_items__amount', filter=Q(batch_items__active_recipe__ingredients__product__id=F('id'))))
+
     # TODO: received amount also needs to subtract the amount that is being used as an ingredient to something else in progress/completed
-    queryset = queryset.values('id', 'in_progress_amount', 'completed_amount', 'received_amount')
+    queryset = queryset.values('id', 'in_progress_amount', 'completed_amount', 'received_amount', 'asdf')
     return queryset
 
 
