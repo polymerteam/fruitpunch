@@ -23,4 +23,5 @@ admin.autodiscover()
 urlpatterns = [
     path('admin/', admin.site.urls),
     url(r'^api/', include('api.urls')),
+    url(r'^shopify/', include('shopify.urls')),
 ]

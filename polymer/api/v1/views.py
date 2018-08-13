@@ -13,6 +13,7 @@ import pytz
 import json
 from rest_framework.decorators import api_view
 from django.conf import settings
+from django.db.models import OuterRef, Subquery
 from django.db.models.functions import Coalesce
 
 
@@ -88,7 +89,23 @@ class InventoryList(generics.ListAPIView):
     queryset = queryset.annotate(completed_amount=Coalesce(Sum('batches__amount', filter=Q(batches__status='c')), 0))
     queryset = queryset.annotate(received_amount_total=Coalesce(Sum('received_inventory__amount'), 0))
     queryset = queryset.annotate(received_amount=F('received_amount_total')-F('in_progress_amount')-F('completed_amount'))
-    queryset = queryset.annotate(asdf=Sum('batches__amount', filter=Q(batches__active_recipe__ingredients__product__id__contains=F('id'))))
+    queryset = queryset.annotate(asdf=F('id'))
+
+
+
+
+
+
+    # queryset = queryset.annotate(asdf=Sum(F('batches__amount')*F('batches__active_recipe__ingredients__amount')/F('batches__active_recipe__default_batch_size'), filter=Q(batches__active_recipe__ingredients__product__id__contains=F('id'))))
+
+    # x = Ingredient.objects.filter(product=OuterRef('pk')).order_by().values('product')
+    # total_product_as_ingredient = x.annotate(amt=Sum(F('amount')/F(''))).values('amt')
+
+
+    # x = Batch.objects.filter(active_recipe__ingredients__product__id__contains=OuterRef('pk')).order_by().values('active_recipe__ingredients__product__id')
+    # total_product_as_ingredient = x.annotate(amt=Sum(F('amount')*F(''))).values('amt')
+
+    # queryset = queryset.annotate(asdf=Subquery(total_product_as_ingredient))
 
     # TODO: received amount also needs to subtract the amount that is being used as an ingredient to something else in progress/completed
     queryset = queryset.values('id', 'in_progress_amount', 'completed_amount', 'received_amount', 'asdf')

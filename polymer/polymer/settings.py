@@ -31,6 +31,9 @@ DEBUG = True
 ALLOWED_HOSTS = []
 
 
+SHOPIFY_API_KEY = os.environ.get("SHOPIFY_API_KEY")
+SHOPIFY_SECRET_KEY = os.environ.get("SHOPIFY_SECRET_KEY")
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -44,6 +47,7 @@ INSTALLED_APPS = [
     # 'rest_framework_docs',
     'rest_framework',
     'api',
+    'shopify',
     'django_filters',
     'storages',
     'corsheaders',
