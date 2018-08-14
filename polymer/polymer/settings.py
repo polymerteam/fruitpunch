@@ -28,7 +28,7 @@ SECRET_KEY = '7#a*8w-ync19yy58=)-()ow-eh%*gwx=l%y_n9^j=6t5ktcyz$'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 SHOPIFY_API_KEY = os.environ.get("SHOPIFY_API_KEY")

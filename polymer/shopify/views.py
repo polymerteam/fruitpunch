@@ -4,10 +4,12 @@ from __future__ import unicode_literals
 import csv
 
 from api.models import *
+from api.v1.serializers import *
 from django.http import HttpResponse
 from requests_oauthlib import OAuth2Session, TokenUpdated
 from django.conf import settings
 from rest_framework.decorators import api_view
+from rest_framework.response import Response
 import requests
 import datetime
 import random
@@ -59,9 +61,6 @@ def createShopifyAuthToken(request):
 	token = shopify.fetch_token(token_url,
 		code=code,
 		client_secret=settings.SHOPIFY_SECRET_KEY)
-	print('!!!!!!!!!!!!!!')
-	print(token)
-	print('!!!!!!!!!!!!!!')
 	if 'team_id' in request.data:
 		team_id = request.data['team_id']
 	else:
@@ -78,13 +77,31 @@ def createShopifyAuthToken(request):
 
 
 
-# @api_view(['POST'])
+@api_view(['GET'])
 def getShopifyProducts(request):	
-	return shopifyAPIHelper(request, "admin/products.json?fields=id,title,variants")
+	body = shopifyAPIHelper(request, "admin/products.json?fields=id,title,variants")
+	shopify_products = body['products']
+	for shopify_product in shopify_products:
+		main_title = shopify_product['title']
+		for variant in shopify_product['variants']:
+			variant_title = main_title + " - " + variant['title']
+			variant_id = variant['id']
+			shopifysku = ShopifySKU.objects.filter(name=variant_title, sku=variant_id)
+			if shopifysku.count() == 0:
+				ShopifySKU.objects.create(name=variant_title, sku=variant_id)
+	# filter by team
+	queryset = ShopifySKU.objects.all()
+	serializer = ShopifySKUSerializer(queryset, many=True)
+	return Response(serializer.data)
 
-# @api_view(['POST'])
+	# response = HttpResponse(json.dumps({"body": body}), content_type="text/plain")
+	# return response;
+
+# @api_view(['GET'])
 def getShopifyOrders(request):	
-	return shopifyAPIHelper(request, "admin/orders.json")
+	body = shopifyAPIHelper(request, "admin/orders.json")
+	response = HttpResponse(json.dumps({"body": body}), content_type="text/plain")
+	return response;
 
 def shopifyAPIHelper(request, url):
 	team_id = request.GET.get('team_id')
@@ -113,8 +130,8 @@ def shopifyAPIHelper(request, url):
 		team.save()
 	r1 = shopify.get(api_url, headers=extra_params)
 	body = json.loads(r1.content)
-	response = HttpResponse(json.dumps({"body": body}), content_type="text/plain")
-	return response;
+	return body
+
 
 # def update_userprofile_token(user_profile, token):
 # 	user_profile.gauth_access_token = token['access_token']

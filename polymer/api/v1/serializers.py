@@ -26,6 +26,13 @@ class ProductSerializer(serializers.ModelSerializer):
 		model = Product
 		fields = ('id', 'name', 'code', 'icon', 'unit', 'dollar_value', 'is_trashed', 'created_at')
 
+class ShopifySKUSerializer(serializers.ModelSerializer):
+	product = ProductSerializer(read_only=True)
+	product_id = serializers.PrimaryKeyRelatedField(source='product', queryset=Product.objects.all(), write_only=True)
+	class Meta:
+		model = ShopifySKU
+		fields = ('id', 'name', 'sku', 'product', 'product_id')
+
 class IngredientSerializer(serializers.ModelSerializer):
 	product = ProductSerializer(read_only=True)
 	product_id = serializers.PrimaryKeyRelatedField(source='product', queryset=Product.objects.all(), write_only=True)
