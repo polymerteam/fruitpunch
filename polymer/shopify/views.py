@@ -86,9 +86,21 @@ def getShopifyProducts(request):
 		for variant in shopify_product['variants']:
 			variant_title = main_title + " - " + variant['title']
 			variant_id = variant['id']
-			shopifysku = ShopifySKU.objects.filter(name=variant_title, sku=variant_id)
+			variant_sku = variant['sku']
+			shopifysku = ShopifySKU.objects.filter(variant_id=variant_id)
 			if shopifysku.count() == 0:
-				ShopifySKU.objects.create(name=variant_title, sku=variant_id)
+				ShopifySKU.objects.create(name=variant_title, variant_id=variant_id, variant_sku=variant_sku)
+			else:
+				sp = shopifysku.first()
+				was_updated = False
+				if sp.name != variant_title:
+					sp.name = variant_title
+					was_updated = True
+				if sp.variant_sku != variant_sku:
+					sp.variant_sku = variant_sku
+					was_updated = True
+				if was_updated:
+					sp.save()
 	# filter by team
 	queryset = ShopifySKU.objects.all()
 	serializer = ShopifySKUSerializer(queryset, many=True)

@@ -21,7 +21,8 @@ class Product(models.Model):
 class ShopifySKU(models.Model):
 	# team = models.ForeignKey(Team, related_name='shopify_skus', on_delete=models.CASCADE)
 	name = models.CharField(max_length=50)
-	sku = models.CharField(max_length=20, unique=True)
+	variant_id = models.CharField(max_length=30, unique=True)
+	variant_sku = models.CharField(max_length=50, null=True)
 	product = models.ForeignKey(Product, related_name='shopify_skus', on_delete=models.CASCADE, null=True)
 
 
