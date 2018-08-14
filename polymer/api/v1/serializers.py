@@ -76,20 +76,23 @@ class RecipeCreateWithIngredientsSerializer(serializers.ModelSerializer):
 class BatchSerializer(serializers.ModelSerializer):
 	product = ProductSerializer(read_only=True)
 	active_recipe = RecipeSerializer(read_only=True)
+	product_data = serializers.CharField(write_only=True)
 
 	def create(self, validated_data):
-		product = validated_data['product']
+		product = validated_data.pop('product_data')
 		active_recipe = Recipe.objects.filter(is_trashed=False, product=product).order_by('-created_at')
 		if active_recipe.count() > 0:
 			active_recipe = active_recipe.first()
 		else:
 			active_recipe = None
-		new_batch = Batch.objects.create(**validated_data, active_recipe=active_recipe)
+		product_obj = Product.objects.get(pk=product)
+		new_batch = Batch.objects.create(**validated_data, product=product_obj, active_recipe=active_recipe)
 		return new_batch
 
 	class Meta:
 		model = Batch
-		fields = ('id', 'status', 'started_at', 'completed_at', 'is_trashed', 'product', 'active_recipe', 'amount')
+		extra_kwargs = {'product_data': {'write_only': True}}
+		fields = ('id', 'status', 'started_at', 'completed_at', 'is_trashed', 'product', 'active_recipe', 'amount', 'product_data')
 
 
 class InventorySerializer(serializers.ModelSerializer):
