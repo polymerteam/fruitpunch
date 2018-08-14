@@ -1,0 +1,59 @@
+[
+  {
+    "model": "api.product",
+    "pk": 1,
+    "fields": {
+      "name": "granola",
+      "code": "",
+      "icon": "",
+      "dollar_value": 10
+    }
+  },
+  {
+    "model": "api.product",
+    "pk": 2,
+    "fields": {
+      "name": "oats",
+      "code": "",
+      "icon": "",
+      "dollar_value": 2
+    }
+  },
+  {
+    "model": "api.product",
+    "pk": 3,
+    "fields": {
+      "name": "sugar",
+      "code": "",
+      "icon": "",
+      "dollar_value": 0.5
+    }
+  },
+
+  {
+    "model": "api.recipe",
+    "pk": 1,
+    "fields": {
+      "product": 1
+    }
+  },
+
+  {
+    "model": "api.ingredient",
+    "pk": 1,
+    "fields": {
+      "product": 2,
+      "recipe": 1,
+      "amount": 5
+    }
+  },
+  {
+    "model": "api.ingredient",
+    "pk": 2,
+    "fields": {
+      "product": 3,
+      "recipe": 1,
+      "amount": 2
+    }
+  }
+]
