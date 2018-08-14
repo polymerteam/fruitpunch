@@ -25,6 +25,14 @@ class UserGet(generics.RetrieveAPIView):
   queryset = User.objects.all()
   serializer_class = UserSerializer
 
+class TeamList(generics.ListCreateAPIView):
+  queryset = Team.objects.all()
+  serializer_class = TeamSerializer
+
+class TeamGet(generics.RetrieveAPIView):
+  queryset = Team.objects.all()
+  serializer_class = TeamSerializer
+
 # #######
 
 class ProductList(generics.ListCreateAPIView):
@@ -143,31 +151,3 @@ class ReceivedInventoryDetail(generics.RetrieveUpdateDestroyAPIView):
 # class UserProfileGet(generics.RetrieveAPIView):
 #   queryset = UserProfile.objects.all()
 #   serializer_class = UserProfileSerializer
-
-# class ProcessList(generics.ListCreateAPIView):
-#   serializer_class = ProcessTypeWithUserSerializer
-#   filter_backends = (OrderingFilter, DjangoFilterBackend)
-#   filter_fields = ('created_by', 'team_created_by', 'id')
-
-#   def get_queryset(self):
-#     return process_search(self.request.query_params)
-
-#   def get(self, request):
-#     queryset = self.filter_queryset(self.get_queryset())
-#     serializer = self.serializer_class(queryset, many=True)
-#     ordering = request.query_params.get('ordering', '')
-#     reverse = ordering[0:1] == '-'
-#     field = ordering[1:] if reverse else ordering
-#     if field == 'last_used':
-#       data = sorted(serializer.data, key=lambda p: p['last_used'], reverse=reverse)
-#     else:
-#       data = serializer.data
-#     return Response(data)
-
-
-# # processes/[pk]/ ...where pk = 'primary key' == 'the id'
-# class ProcessDetail(generics.RetrieveUpdateDestroyAPIView):
-#   queryset = ProcessType.objects.all()\
-#     .select_related('created_by', 'team_created_by')\
-#     .prefetch_related('attribute_set')
-#   serializer_class = ProcessTypeWithUserSerializer

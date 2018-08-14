@@ -3,9 +3,13 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 
 # Create your models here.
+class Team(models.Model):
+	name = models.CharField(max_length=50, unique=True)
+	shopify_access_token = models.TextField(null=True)
+	shopify_store_name = models.CharField(max_length=50, null=True)
 
 class Product(models.Model):
-	# team = models.ForeignKey(Team, related_name='processes', on_delete=models.CASCADE)
+	# team = models.ForeignKey(Team, related_name='products', on_delete=models.CASCADE)
 	name = models.CharField(max_length=50)
 	code = models.CharField(max_length=20)
 	icon = models.CharField(max_length=50)
@@ -16,21 +20,21 @@ class Product(models.Model):
 
 
 class Recipe(models.Model):
-	# team = models.ForeignKey(Team, related_name='processes', on_delete=models.CASCADE)
+	# team = models.ForeignKey(Team, related_name='recipes', on_delete=models.CASCADE)
 	product = models.ForeignKey(Product, related_name='recipes', on_delete=models.CASCADE)
 	default_batch_size = models.DecimalField(default=1, max_digits=10, decimal_places=3)
 	is_trashed = models.BooleanField(default=False, db_index=True)
 	created_at = models.DateTimeField(default=timezone.now, blank=True)
 
 class Ingredient(models.Model):
-	# team = models.ForeignKey(Team, related_name='processes', on_delete=models.CASCADE)
+	# team = models.ForeignKey(Team, related_name='ingredients', on_delete=models.CASCADE)
 	recipe = models.ForeignKey(Recipe, related_name="ingredients", on_delete=models.CASCADE)
 	product = models.ForeignKey(Product, related_name="ingredients", on_delete=models.CASCADE)
 	amount = models.DecimalField(default=1, max_digits=10, decimal_places=3)
 	is_trashed = models.BooleanField(default=False, db_index=True)
 
 class Batch(models.Model):
-	# team = models.ForeignKey(Team, related_name='processes', on_delete=models.CASCADE)
+	# team = models.ForeignKey(Team, related_name='batches', on_delete=models.CASCADE)
 	STATUSES = (
 		('i', 'in progress'),
 		('c', 'completed')
@@ -45,21 +49,12 @@ class Batch(models.Model):
 
 
 class ReceivedInventory(models.Model):
-	# team = models.ForeignKey(Team, related_name='processes', on_delete=models.CASCADE)
+	# team = models.ForeignKey(Team, related_name='received_inventory', on_delete=models.CASCADE)
 	product = models.ForeignKey(Product, related_name='received_inventory', on_delete=models.CASCADE)
 	amount = models.DecimalField(default=1, max_digits=10, decimal_places=3)
 	received_at = models.DateTimeField(default=timezone.now, blank=True)
 	is_trashed = models.BooleanField(default=False, db_index=True)
 
-
-# class Team(models.Model):
-# 	name = models.CharField(max_length=50, unique=True)
-# 	timezone = models.CharField(max_length=50, default=pytz.timezone('US/Pacific').zone)
-# 	task_label_type = models.IntegerField(default=0)
-# 	time_format = models.CharField(max_length=1, choices=TIME_FORMATS, default='n')
-
-# 	def __str__(self):
-# 		return self.name
 
 # class UserProfile(models.Model):
 # 	USERTYPES = (

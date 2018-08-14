@@ -16,6 +16,11 @@ class UserSerializer(serializers.ModelSerializer):
 		model = User
 		fields = ('id', 'username')
 
+class TeamSerializer(serializers.ModelSerializer):
+	class Meta:
+		model = Team
+		fields = ('id', 'name', 'shopify_store_name', 'shopify_access_token')
+
 class ProductSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = Product
@@ -114,35 +119,3 @@ class ReceivedInventorySerializer(serializers.ModelSerializer):
 		model = ReceivedInventory
 		fields = ('id', 'product', 'product_id', 'amount', 'received_at', 'is_trashed')
 
-
-# class UserProfileSerializer(serializers.ModelSerializer):
-# 	user_id = serializers.CharField(source='user.id', read_only=True)
-# 	username = serializers.CharField(source='user.username', read_only=True)
-# 	first_name = serializers.CharField(source='user.first_name')
-# 	last_name = serializers.CharField(source='user.last_name')
-
-# 	class Meta:
-# 		model = UserProfile
-# 		fields = ('user_id', 'id', 'username', 'first_name', 'last_name')
-
-
-
-# class ProcessTypeWithUserSerializer(serializers.ModelSerializer):
-# 	attributes = serializers.SerializerMethodField()
-# 	created_by_name = serializers.CharField(source='created_by.username', read_only=True)
-# 	username = serializers.SerializerMethodField(source='get_username', read_only=True)
-# 	last_used = serializers.DateTimeField(source='get_last_used_date', read_only=True)
-# 	team_created_by_name = serializers.CharField(source='team_created_by.name', read_only=True)
-# 	created_at = serializers.DateTimeField(read_only=True)
-# 	default_amount = serializers.DecimalField(max_digits=10, decimal_places=3, coerce_to_string=False)
-
-# 	def get_attributes(self, process_type):
-# 		return AttributeSerializer(process_type.attribute_set.order_by('rank'), many=True).data
-
-# 	def get_username(self, product):
-# 		username = product.created_by.username
-# 		return re.sub('_\w+$', '', username)
-
-# 	class Meta:
-# 		model = ProcessType
-# 		fields = ('id', 'username', 'name', 'code', 'icon', 'attributes', 'unit', 'created_by', 'output_desc', 'created_by_name', 'default_amount', 'team_created_by', 'team_created_by_name', 'is_trashed', 'created_at', 'last_used', 'search', 'category')
