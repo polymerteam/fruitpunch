@@ -11,6 +11,9 @@ urlpatterns = [
     url(r'^products/$', views.ProductList.as_view()),
     url(r'^products/(?P<pk>[0-9]+)/$', views.ProductDetail.as_view()),
 
+    url(r'^shopify-skus/$', views.ShopifySKUList.as_view()),
+    url(r'^shopify-skus/(?P<pk>[0-9]+)/$', views.ShopifySKUDetail.as_view()),
+
     url(r'^recipes/$', views.RecipeList.as_view()),
     url(r'^recipes/create-with-ingredients/$', views.RecipeCreateWithIngredients.as_view()),
     url(r'^recipes/(?P<pk>[0-9]+)/$', views.RecipeDetail.as_view()),
@@ -27,6 +30,10 @@ urlpatterns = [
 
     url(r'^received/$', views.ReceivedInventoryList.as_view()),
     url(r'^received/(?P<pk>[0-9]+)/$', views.ReceivedInventoryDetail.as_view()),
+
+    # create product and match sku endpoint - takes in a shopifysku id and information to create a new product
+
+    # url(r'^orders-by-product/$', views.OrdersByProductList.as_view()),
 
 ]
 

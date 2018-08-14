@@ -4,25 +4,28 @@ from __future__ import unicode_literals
 import csv
 
 from api.models import *
+from api.v1.serializers import *
 from django.http import HttpResponse
 from requests_oauthlib import OAuth2Session, TokenUpdated
 from django.conf import settings
 from rest_framework.decorators import api_view
+from rest_framework.response import Response
 import requests
 import datetime
 import random
 import simplejson as json
 
 
-SHOPIFY_SCOPE = 'read_orders,write_orders,read_products'
+SHOPIFY_SCOPE = 'read_all_orders,read_orders,write_orders,read_products'
 REDIRECT_URI = 'https://localhost:3000/shopify/ext'
 
 # @csrf_exempt
 @api_view(['POST'])
 def createShopifyAuthURL(request):
 	shop_name = request.data['shopname']
-	team_id = request.data['team_id']
-	if not team_id:
+	if 'team_id' in request.data:
+		team_id = request.data['team_id']
+	else:
 		team_id = 1
 	team = Team.objects.get(pk=team_id)
 	team.shopify_store_name = shop_name
@@ -58,15 +61,13 @@ def createShopifyAuthToken(request):
 	token = shopify.fetch_token(token_url,
 		code=code,
 		client_secret=settings.SHOPIFY_SECRET_KEY)
-	print('!!!!!!!!!!!!!!')
-	print(token)
-	print('!!!!!!!!!!!!!!')
-	team_id = request.data['team_id']
-	if not team_id:
+	if 'team_id' in request.data:
+		team_id = request.data['team_id']
+	else:
 		team_id = 1
 	team = Team.objects.get(pk=team_id)
 	team.shopify_store_name = shop_name
-	team.shopify_access_token = token
+	team.shopify_access_token = token['access_token']
 	team.save()
   # save the token to the user
   # success response
@@ -76,13 +77,31 @@ def createShopifyAuthToken(request):
 
 
 
-# @api_view(['POST'])
+@api_view(['GET'])
 def getShopifyProducts(request):	
-	return shopifyAPIHelper(request, "admin/products.json?fields=id,title,variants")
+	body = shopifyAPIHelper(request, "admin/products.json?fields=id,title,variants")
+	shopify_products = body['products']
+	for shopify_product in shopify_products:
+		main_title = shopify_product['title']
+		for variant in shopify_product['variants']:
+			variant_title = main_title + " - " + variant['title']
+			variant_id = variant['id']
+			shopifysku = ShopifySKU.objects.filter(name=variant_title, sku=variant_id)
+			if shopifysku.count() == 0:
+				ShopifySKU.objects.create(name=variant_title, sku=variant_id)
+	# filter by team
+	queryset = ShopifySKU.objects.all()
+	serializer = ShopifySKUSerializer(queryset, many=True)
+	return Response(serializer.data)
 
-# @api_view(['POST'])
+	# response = HttpResponse(json.dumps({"body": body}), content_type="text/plain")
+	# return response;
+
+# @api_view(['GET'])
 def getShopifyOrders(request):	
-	return shopifyAPIHelper(request, "admin/orders.json")
+	body = shopifyAPIHelper(request, "admin/orders.json")
+	response = HttpResponse(json.dumps({"body": body}), content_type="text/plain")
+	return response;
 
 def shopifyAPIHelper(request, url):
 	team_id = request.GET.get('team_id')
@@ -90,7 +109,7 @@ def shopifyAPIHelper(request, url):
 	shop_name = team.shopify_store_name
 	access_token = team.shopify_access_token
 	# shop_name = 'polymerstore'
-	product_url = "https://" + shop_name + ".myshopify.com/" + url
+	api_url = "https://" + shop_name + ".myshopify.com/" + url
 	token_url = "https://" + shop_name + ".myshopify.com/admin/oauth/access_token"
 
 	token = {
@@ -104,16 +123,15 @@ def shopifyAPIHelper(request, url):
 
 	try:
 		shopify = OAuth2Session(settings.SHOPIFY_API_KEY, token=token, auto_refresh_url=token_url, auto_refresh_kwargs=extra, scope=SHOPIFY_SCOPE)
-		random_data = shopify.get(product_url, headers=extra_params)
+		random_data = shopify.get(api_url, headers=extra_params)
 
 	except TokenUpdated as e:
 		team.shopify_access_token = e.token
 		team.save()
-		
-	r1 = shopify.get(product_url, headers=extra_params)
+	r1 = shopify.get(api_url, headers=extra_params)
 	body = json.loads(r1.content)
-	response = HttpResponse(json.dumps({"body": body}), content_type="text/plain")
-	return response;
+	return body
+
 
 # def update_userprofile_token(user_profile, token):
 # 	user_profile.gauth_access_token = token['access_token']

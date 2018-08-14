@@ -43,6 +43,14 @@ class ProductDetail(generics.RetrieveUpdateDestroyAPIView):
   queryset = Product.objects.all()
   serializer_class = ProductSerializer
 
+class ShopifySKUList(generics.ListCreateAPIView):
+  queryset = ShopifySKU.objects.all()
+  serializer_class = ShopifySKUSerializer
+
+class ShopifySKUDetail(generics.RetrieveUpdateDestroyAPIView):
+  queryset = ShopifySKU.objects.all()
+  serializer_class = ShopifySKUSerializer
+
 class RecipeList(generics.ListCreateAPIView):
   queryset = Recipe.objects.all()
   serializer_class = RecipeSerializer

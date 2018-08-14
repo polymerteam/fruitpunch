@@ -18,6 +18,12 @@ class Product(models.Model):
 	dollar_value = models.DecimalField(max_digits=10, decimal_places=2, null=True)
 	is_trashed = models.BooleanField(default=False, db_index=True)
 
+class ShopifySKU(models.Model):
+	# team = models.ForeignKey(Team, related_name='shopify_skus', on_delete=models.CASCADE)
+	name = models.CharField(max_length=50)
+	sku = models.CharField(max_length=20, unique=True)
+	product = models.ForeignKey(Product, related_name='shopify_skus', on_delete=models.CASCADE, null=True)
+
 
 class Recipe(models.Model):
 	# team = models.ForeignKey(Team, related_name='recipes', on_delete=models.CASCADE)
