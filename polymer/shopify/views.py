@@ -4,7 +4,8 @@ from __future__ import unicode_literals
 import csv
 
 from api.models import *
-from api.v1.serializers import *
+# from api.v1.serializers import *
+from shopify.serializers import *
 from django.http import HttpResponse
 from requests_oauthlib import OAuth2Session, TokenUpdated
 from django.conf import settings
@@ -109,11 +110,27 @@ def getShopifyProducts(request):
 	# response = HttpResponse(json.dumps({"body": body}), content_type="text/plain")
 	# return response;
 
-# @api_view(['GET'])
+@api_view(['GET'])
 def getShopifyOrders(request):	
 	body = shopifyAPIHelper(request, "admin/orders.json")
-	response = HttpResponse(json.dumps({"body": body}), content_type="text/plain")
-	return response;
+	shopify_orders = body['orders']
+	order_map = {}
+	for order in shopify_orders:
+		for line_item in order['line_items']:
+			variant_id = line_item['variant_id']
+			quantity = line_item['quantity']
+			matching_product = ShopifySKU.objects.filter(variant_id=variant_id).first().product
+			if matching_product:
+				matching_product = matching_product.id
+				if variant_id in order_map:
+					order_map[matching_product] += quantity
+				else:
+					order_map[matching_product] = quantity
+	order_list = []
+	for obj in order_map:
+		order_list.append({'product_id': obj, 'total_amount': order_map[obj]})
+	serializer = ShopifyOrderSerializer(order_list, many=True)
+	return Response(serializer.data)
 
 def shopifyAPIHelper(request, url):
 	team_id = request.GET.get('team_id')
