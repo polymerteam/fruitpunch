@@ -8,6 +8,7 @@ urlpatterns = [
     url(r'^create-auth-url/$', views.createShopifyAuthURL, name='x'),
     url(r'^create-auth-token/$', views.createShopifyAuthToken, name='y'),
     url(r'^get-shopify-products/$', views.getShopifyProducts, name='x'),
+    url(r'^get-shopify-orders-product/$', views.getShopifyOrdersByProduct, name='x'),
     url(r'^get-shopify-orders/$', views.getShopifyOrders, name='x'),
     # url(r'^clear-token/$', views.clearToken, name='b'),
 

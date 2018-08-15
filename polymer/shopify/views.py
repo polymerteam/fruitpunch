@@ -17,7 +17,7 @@ import random
 import simplejson as json
 
 
-SHOPIFY_SCOPE = 'read_all_orders,read_orders,write_orders,read_products'
+SHOPIFY_SCOPE = 'read_all_orders,read_orders,write_orders,read_products,read_customers'
 REDIRECT_URI = 'https://localhost:3000/shopify/ext'
 
 # @csrf_exempt
@@ -85,7 +85,9 @@ def getShopifyProducts(request):
 	for shopify_product in shopify_products:
 		main_title = shopify_product['title']
 		for variant in shopify_product['variants']:
-			variant_title = main_title + " - " + variant['title']
+			variant_title = main_title
+			if variant['title'] != "Default Title":
+				variant_title = main_title + " - " + variant['title']
 			variant_id = variant['id']
 			variant_sku = variant['sku']
 			shopifysku = ShopifySKU.objects.filter(variant_id=variant_id)
@@ -111,25 +113,70 @@ def getShopifyProducts(request):
 	# return response;
 
 @api_view(['GET'])
+def getShopifyOrdersByProduct(request):	
+	body = shopifyAPIHelper(request, "admin/orders.json")
+	shopify_orders = body['orders']
+	order_map = {}
+	customer_map = {}
+	for order in shopify_orders:
+		if 'customer' in order:
+			if order['customer']['first_name'] != '':
+				customer_name = order['customer']['first_name']
+			if order['customer']['last_name'] != '':
+				customer_name += ' ' + order['customer']['last_name']
+		else:
+			customer_name = None
+		for line_item in order['line_items']:
+			variant_id = line_item['variant_id']
+			quantity = line_item['quantity']
+			matching_products = ShopifySKU.objects.filter(variant_id=variant_id)
+			if matching_products.count() > 0:
+				matching_product = matching_products.first().product
+				if matching_product:
+					matching_product = matching_product.id
+					if variant_id in order_map:
+						order_map[matching_product] += quantity
+					else:
+						order_map[matching_product] = quantity
+						customer_map[matching_product] = []
+					customer_map[matching_product].append(customer_name)
+	order_list = []
+	for obj in order_map:
+		order_list.append({'product_id': obj, 'total_amount': order_map[obj], 'customer_name_list': customer_map[obj]})
+	serializer = ShopifyOrderSerializer(order_list, many=True)
+	return Response(serializer.data)
+
+
+@api_view(['GET'])
 def getShopifyOrders(request):	
 	body = shopifyAPIHelper(request, "admin/orders.json")
 	shopify_orders = body['orders']
 	order_map = {}
+	customer_map = {}
+	order_list = []
 	for order in shopify_orders:
+		if 'customer' in order:
+			if order['customer']['first_name'] != '':
+				customer_name = order['customer']['first_name']
+			if order['customer']['last_name'] != '':
+				customer_name += ' ' + order['customer']['last_name']
+		else:
+			customer_name = None
+		order_number = order['order_number']
+		order_name = order['name']
+		line_item_list = []
 		for line_item in order['line_items']:
 			variant_id = line_item['variant_id']
 			quantity = line_item['quantity']
-			matching_product = ShopifySKU.objects.filter(variant_id=variant_id).first().product
-			if matching_product:
-				matching_product = matching_product.id
-				if variant_id in order_map:
-					order_map[matching_product] += quantity
-				else:
-					order_map[matching_product] = quantity
-	order_list = []
-	for obj in order_map:
-		order_list.append({'product_id': obj, 'total_amount': order_map[obj]})
-	serializer = ShopifyOrderSerializer(order_list, many=True)
+			matching_products = ShopifySKU.objects.filter(variant_id=variant_id)
+			if matching_products.count() > 0:
+				matching_product = matching_products.first().product
+				if matching_product:
+					matching_product = matching_product.id
+					line_item_list.append({'product_id': matching_product, 'amount': quantity})
+		order_list.append({'order_number': order_number, 'order_name': order_name, 'customer_name': customer_name, 'line_items': line_item_list})
+
+	serializer = ShopifySimpleOrderSerializer(order_list, many=True)
 	return Response(serializer.data)
 
 def shopifyAPIHelper(request, url):
