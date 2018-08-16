@@ -168,12 +168,15 @@ def getShopifyOrders(request):
 		for line_item in order['line_items']:
 			variant_id = line_item['variant_id']
 			quantity = line_item['quantity']
+			shopify_item_name = line_item['name']
 			matching_products = ShopifySKU.objects.filter(variant_id=variant_id)
 			if matching_products.count() > 0:
 				matching_product = matching_products.first().product
 				if matching_product:
 					matching_product = matching_product.id
-					line_item_list.append({'product_id': matching_product, 'amount': quantity})
+			else:
+				matching_product = None
+			line_item_list.append({'product_id': matching_product, 'shopify_id': variant_id, 'shopify_name': shopify_item_name, 'amount': quantity})
 		order_list.append({'order_number': order_number, 'order_name': order_name, 'customer_name': customer_name, 'line_items': line_item_list})
 
 	serializer = ShopifySimpleOrderSerializer(order_list, many=True)

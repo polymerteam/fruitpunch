@@ -27,9 +27,12 @@ class ShopifySimpleOrderSerializer(serializers.Serializer):
 	def get_line_items(self, obj):
 		line_item_list = []
 		for item in obj['line_items']:
-			product = ProductSerializer(Product.objects.get(pk=item['product_id'])).data
+			if item['product_id'] != None:
+				product = ProductSerializer(Product.objects.get(pk=item['product_id'])).data
+			else:
+				product = None
 			amount = item['amount']
-			line_item_list.append({'product': product, 'amount': amount})
+			line_item_list.append({'product': product, 'shopify_id': item['shopify_id'], 'shopify_name': item['shopify_name'], 'amount': amount})
 		return line_item_list
 
 	def get_order_number(self, obj):
