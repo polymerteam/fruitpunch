@@ -106,7 +106,6 @@ class InventorySerializer(serializers.ModelSerializer):
 	in_progress_amount = serializers.DecimalField(max_digits=10, decimal_places=3)
 	completed_amount = serializers.DecimalField(max_digits=10, decimal_places=3)
 	received_amount = serializers.DecimalField(max_digits=10, decimal_places=3)
-	asdf = serializers.DecimalField(max_digits=10, decimal_places=3)
 	product = serializers.SerializerMethodField()
 
 	def get_product(self, product):
@@ -114,7 +113,7 @@ class InventorySerializer(serializers.ModelSerializer):
 
 	class Meta:
 		model = Product
-		fields = ('id', 'product', 'in_progress_amount', 'completed_amount', 'received_amount', 'asdf')
+		fields = ('id', 'product', 'in_progress_amount', 'completed_amount', 'received_amount')
 
 
 class ReceivedInventorySerializer(serializers.ModelSerializer):

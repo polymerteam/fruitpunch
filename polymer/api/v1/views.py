@@ -105,7 +105,7 @@ class InventoryList(generics.ListAPIView):
     queryset = queryset.annotate(completed_amount=Coalesce(Sum('batches__amount', filter=Q(batches__status='c')), 0))
     queryset = queryset.annotate(received_amount_total=Coalesce(Sum('received_inventory__amount'), 0))
     queryset = queryset.annotate(received_amount=F('received_amount_total')-F('in_progress_amount')-F('completed_amount'))
-    queryset = queryset.annotate(asdf=F('id'))
+    # queryset = queryset.annotate(asdf=F('id'))
 
 
 
@@ -124,7 +124,7 @@ class InventoryList(generics.ListAPIView):
     # queryset = queryset.annotate(asdf=Subquery(total_product_as_ingredient))
 
     # TODO: received amount also needs to subtract the amount that is being used as an ingredient to something else in progress/completed
-    queryset = queryset.values('id', 'in_progress_amount', 'completed_amount', 'received_amount', 'asdf')
+    queryset = queryset.values('id', 'in_progress_amount', 'completed_amount', 'received_amount')
     return queryset
 
 

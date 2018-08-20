@@ -164,6 +164,7 @@ def getShopifyOrders(request):
 			customer_name = None
 		order_number = order['order_number']
 		order_name = order['name']
+		order_date = order['created_at']
 		line_item_list = []
 		for line_item in order['line_items']:
 			variant_id = line_item['variant_id']
@@ -177,7 +178,7 @@ def getShopifyOrders(request):
 			else:
 				matching_product = None
 			line_item_list.append({'product_id': matching_product, 'shopify_id': variant_id, 'shopify_name': shopify_item_name, 'amount': quantity})
-		order_list.append({'order_number': order_number, 'order_name': order_name, 'customer_name': customer_name, 'line_items': line_item_list})
+		order_list.append({'order_number': order_number, 'order_name': order_name, 'created_at': order_date, 'customer_name': customer_name, 'line_items': line_item_list})
 
 	serializer = ShopifySimpleOrderSerializer(order_list, many=True)
 	return Response(serializer.data)

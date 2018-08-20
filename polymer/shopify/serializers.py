@@ -23,6 +23,7 @@ class ShopifySimpleOrderSerializer(serializers.Serializer):
 	order_name = serializers.SerializerMethodField()
 	customer_name = serializers.SerializerMethodField()
 	line_items = serializers.SerializerMethodField()
+	created_at = serializers.SerializerMethodField()
 
 	def get_line_items(self, obj):
 		line_item_list = []
@@ -43,6 +44,9 @@ class ShopifySimpleOrderSerializer(serializers.Serializer):
 
 	def get_customer_name(self, obj):
 		return obj['customer_name']
+
+	def get_created_at(self, obj):
+		return obj['created_at']
 
 
 
