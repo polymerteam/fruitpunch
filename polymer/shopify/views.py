@@ -24,8 +24,8 @@ REDIRECT_URI = 'https://localhost:3000/shopify/ext'
 @api_view(['POST'])
 def createShopifyAuthURL(request):
 	shop_name = request.data['shopname']
-	if 'team_id' in request.data:
-		team_id = request.data['team_id']
+	if 'team' in request.data:
+		team_id = request.data['team']
 	else:
 		team_id = 1
 	team = Team.objects.get(pk=team_id)
@@ -62,8 +62,8 @@ def createShopifyAuthToken(request):
 	token = shopify.fetch_token(token_url,
 		code=code,
 		client_secret=settings.SHOPIFY_SECRET_KEY)
-	if 'team_id' in request.data:
-		team_id = request.data['team_id']
+	if 'team' in request.data:
+		team_id = request.data['team']
 	else:
 		team_id = 1
 	team = Team.objects.get(pk=team_id)
@@ -184,7 +184,7 @@ def getShopifyOrders(request):
 	return Response(serializer.data)
 
 def shopifyAPIHelper(request, url):
-	team_id = request.GET.get('team_id')
+	team_id = request.query_params.get('team')
 	team = Team.objects.get(pk=team_id)
 	shop_name = team.shopify_store_name
 	access_token = team.shopify_access_token
