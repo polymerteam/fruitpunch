@@ -121,9 +121,9 @@ def getShopifyOrdersByProduct(request):
 	for order in shopify_orders:
 		if 'customer' in order:
 			if order['customer']['first_name'] != '':
-				customer_name = order['customer']['first_name']
+				customer_name = order['customer'].get('first_name', '')
 			if order['customer']['last_name'] != '':
-				customer_name += ' ' + order['customer']['last_name']
+				customer_name += ' ' + ''
 		else:
 			customer_name = None
 		for line_item in order['line_items']:
