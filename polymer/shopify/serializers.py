@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from api.models import *
 from api.v1.serializers import *
+from django.db.models import OuterRef, Subquery
+from django.db.models.functions import Coalesce
 
 class ShopifyOrderSerializer(serializers.Serializer):
 	product = serializers.SerializerMethodField()
@@ -19,12 +21,16 @@ class ShopifyOrderSerializer(serializers.Serializer):
 class IngredientAmountSerializer(serializers.Serializer):
 	product = serializers.SerializerMethodField()
 	amount_needed = serializers.SerializerMethodField()
+	amount_in_inventory = serializers.SerializerMethodField()
 
 	def get_product(self, obj):
 		return ProductSerializer(Product.objects.get(pk=obj['product_id'])).data
 
 	def get_amount_needed(self, obj):
 		return obj['amount_needed'] or 0
+
+	def get_amount_in_inventory(self, obj):
+		return obj['amount_in_inventory'] or 0
 
 
 

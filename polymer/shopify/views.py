@@ -160,7 +160,12 @@ def getIngredientsForOrders(request):
 	ing_list = []
 	for obj in ingredient_amount_map:
 		# TODO: amount needed should subtract the amount received of that ingredient
-		ing_list.append({'product_id': obj, 'amount_needed': ingredient_amount_map[obj]})
+		qs = Product.objects.filter(pk=obj).annotate(in_progress_amount=Coalesce(Sum('batches__amount', filter=Q(batches__status='i')), 0))
+		qs = qs.annotate(completed_amount=Coalesce(Sum('batches__amount', filter=Q(batches__status='c')), 0))
+		qs = qs.annotate(received_amount_total=Coalesce(Sum('received_inventory__amount'), 0))
+		qs = qs.annotate(received_amount=F('received_amount_total')-F('in_progress_amount')-F('completed_amount'))
+		inventory_amount = qs[0].received_amount
+		ing_list.append({'product_id': obj, 'amount_needed': ingredient_amount_map[obj], 'amount_in_inventory': inventory_amount})
 
 	serializer = IngredientAmountSerializer(ing_list, many=True)
 	return Response(serializer.data)

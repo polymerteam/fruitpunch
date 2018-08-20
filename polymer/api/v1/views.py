@@ -123,7 +123,7 @@ class InventoryList(generics.ListAPIView):
 
     # queryset = queryset.annotate(asdf=Subquery(total_product_as_ingredient))
 
-    # TODO: received amount also needs to subtract the amount that is being used as an ingredient to something else in progress/completed
+    # TODO: received amount also needs to subtract the amount that is being used as an ingredient to batches that were completed
     queryset = queryset.values('id', 'in_progress_amount', 'completed_amount', 'received_amount')
     return queryset
 
