@@ -24,7 +24,7 @@ class TeamSerializer(serializers.ModelSerializer):
 class ProductSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = Product
-		fields = ('id', 'name', 'code', 'icon', 'unit', 'dollar_value', 'is_trashed', 'created_at')
+		fields = ('id', 'name', 'code', 'icon', 'unit', 'is_trashed', 'created_at')
 
 class ShopifySKUSerializer(serializers.ModelSerializer):
 	product = ProductSerializer(read_only=True)
@@ -126,5 +126,5 @@ class ReceivedInventorySerializer(serializers.ModelSerializer):
 
 	class Meta:
 		model = ReceivedInventory
-		fields = ('id', 'product', 'product_id', 'amount', 'received_at', 'is_trashed')
+		fields = ('id', 'product', 'product_id', 'amount', 'dollar_value', 'received_at', 'is_trashed')
 

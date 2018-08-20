@@ -16,6 +16,16 @@ class ShopifyOrderSerializer(serializers.Serializer):
 	def get_customer_list(self, obj):
 		return obj['customer_name_list'] or []
 
+class IngredientAmountSerializer(serializers.Serializer):
+	product = serializers.SerializerMethodField()
+	amount_needed = serializers.SerializerMethodField()
+
+	def get_product(self, obj):
+		return ProductSerializer(Product.objects.get(pk=obj['product_id'])).data
+
+	def get_amount_needed(self, obj):
+		return obj['amount_needed'] or 0
+
 
 
 class ShopifySimpleOrderSerializer(serializers.Serializer):

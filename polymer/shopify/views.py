@@ -111,6 +111,62 @@ def getShopifyProducts(request):
 
 	# response = HttpResponse(json.dumps({"body": body}), content_type="text/plain")
 	# return response;
+@api_view(['GET'])
+def getIngredientsForOrders(request):
+	body = shopifyAPIHelper(request, "admin/orders.json")
+	shopify_orders = body['orders']
+	order_map = {}
+	customer_map = {}
+	for order in shopify_orders:
+		if 'customer' in order:
+			if order['customer']['first_name'] and order['customer']['first_name'] != '':
+				customer_name = order['customer']['first_name']
+			if order['customer']['last_name'] and order['customer']['last_name'] != '':
+				customer_name += ' ' + order['customer']['last_name']
+		else:
+			customer_name = None
+		for line_item in order['line_items']:
+			variant_id = line_item['variant_id']
+			quantity = line_item['quantity']
+			matching_products = ShopifySKU.objects.filter(variant_id=variant_id)
+			if matching_products.count() > 0:
+				matching_product = matching_products.first().product
+				if matching_product:
+					matching_product = matching_product.id
+					if matching_product in order_map:
+						order_map[matching_product] += quantity
+					else:
+						order_map[matching_product] = quantity
+						customer_map[matching_product] = []
+					customer_map[matching_product].append(customer_name)
+	order_list = []
+	for obj in order_map:
+		order_list.append({'product_id': obj, 'total_amount': order_map[obj], 'customer_name_list': customer_map[obj]})
+
+	ingredient_amount_map = {}
+	for item in order_list:
+		product = item['product_id']
+		amt = item['total_amount']
+		matching_recipe = Recipe.objects.filter(is_trashed=False, product=product).order_by('-created_at').first()
+		recipe_size = matching_recipe.default_batch_size
+		ingredients = Ingredient.objects.filter(recipe=matching_recipe, is_trashed=False)
+		for ingredient in ingredients:
+			added_amt = (ingredient.amount/recipe_size)*amt
+			if ingredient.product.id in ingredient_amount_map:
+				ingredient_amount_map[ingredient.product.id] += added_amt
+			else:
+				ingredient_amount_map[ingredient.product.id] = added_amt
+
+	ing_list = []
+	for obj in ingredient_amount_map:
+		# TODO: amount needed should subtract the amount received of that ingredient
+		ing_list.append({'product_id': obj, 'amount_needed': ingredient_amount_map[obj]})
+
+	serializer = IngredientAmountSerializer(ing_list, many=True)
+	return Response(serializer.data)
+
+			
+
 
 @api_view(['GET'])
 def getShopifyOrdersByProduct(request):	

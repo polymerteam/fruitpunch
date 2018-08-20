@@ -27,7 +27,6 @@ urlpatterns = [
 
     url(r'^inventories/$', views.InventoryList.as_view()),
 
-
     url(r'^received/$', views.ReceivedInventoryList.as_view()),
     url(r'^received/(?P<pk>[0-9]+)/$', views.ReceivedInventoryDetail.as_view()),
 

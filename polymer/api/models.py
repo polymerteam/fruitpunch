@@ -15,7 +15,6 @@ class Product(models.Model):
 	icon = models.CharField(max_length=50)
 	created_at = models.DateTimeField(default=timezone.now, blank=True)
 	unit = models.CharField(max_length=20, default="kilogram")
-	dollar_value = models.DecimalField(max_digits=10, decimal_places=2, null=True)
 	is_trashed = models.BooleanField(default=False, db_index=True)
 
 class ShopifySKU(models.Model):
@@ -62,6 +61,7 @@ class ReceivedInventory(models.Model):
 	amount = models.DecimalField(default=1, max_digits=10, decimal_places=3)
 	received_at = models.DateTimeField(default=timezone.now, blank=True)
 	is_trashed = models.BooleanField(default=False, db_index=True)
+	dollar_value = models.DecimalField(max_digits=10, decimal_places=2, null=True)
 
 
 # class UserProfile(models.Model):
