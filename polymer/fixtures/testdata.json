@@ -1,59 +1,203 @@
 [
   {
+    "model": "api.team",
+    "pk": 1,
+    "fields": {
+      "name": "teampolymer",
+      "shopify_store_name": "polymerstore",
+      "shopify_access_token": "c1e2615dd71a09af3b8c0e6317580f1f"
+    }
+  },
+  {
     "model": "api.product",
     "pk": 1,
     "fields": {
-      "name": "granola",
-      "code": "",
+      "name": "Strawberries",
+      "code": "STRW",
       "icon": "",
-      "dollar_value": 10
+      "unit": "pounds"
     }
   },
   {
     "model": "api.product",
     "pk": 2,
     "fields": {
-      "name": "oats",
-      "code": "",
+      "name": "Sugar",
+      "code": "SUG",
       "icon": "",
-      "dollar_value": 2
+      "unit": "kilograms"
     }
   },
   {
     "model": "api.product",
     "pk": 3,
     "fields": {
-      "name": "sugar",
-      "code": "",
+      "name": "Corn Syrup",
+      "code": "CSYP",
       "icon": "",
-      "dollar_value": 0.5
+      "unit": "ounces"
     }
   },
-
   {
-    "model": "api.recipe",
-    "pk": 1,
+    "model": "api.product",
+    "pk": 4,
     "fields": {
-      "product": 1
+      "name": "Lemon Juice",
+      "code": "LEMJ",
+      "icon": "",
+      "unit": "ounces"
     }
   },
-
   {
-    "model": "api.ingredient",
+    "model": "api.product",
+    "pk": 5,
+    "fields": {
+      "name": "Lemon Zest",
+      "code": "LEMZ",
+      "icon": "",
+      "unit": "grams"
+    }
+  },
+  {
+    "model": "api.product",
+    "pk": 6,
+    "fields": {
+      "name": "Salt",
+      "code": "SLT",
+      "icon": "",
+      "unit": "kilograms"
+    }
+  },
+  {
+    "model": "api.product",
+    "pk": 7,
+    "fields": {
+      "name": "Oranges",
+      "code": "ORNG",
+      "icon": "",
+      "unit": "pounds"
+    }
+  },
+  {
+    "model": "api.product",
+    "pk": 8,
+    "fields": {
+      "name": "Egg Yolks",
+      "code": "EGGY",
+      "icon": "",
+      "unit": "grams"
+    }
+  },
+  {
+    "model": "api.product",
+    "pk": 9,
+    "fields": {
+      "name": "Unsalted Butter",
+      "code": "UNBUT",
+      "icon": "",
+      "unit": "ounces"
+    }
+  },
+  {
+    "model": "api.product",
+    "pk": 10,
+    "fields": {
+      "name": "Lemon curd",
+      "code": "LCRD",
+      "icon": "",
+      "unit": "ounces"
+    }
+  },
+  {
+    "model": "api.product",
+    "pk": 11,
+    "fields": {
+      "name": "Orange marmalade",
+      "code": "OMARM",
+      "icon": "",
+      "unit": "ounces"
+    }
+  },
+  {
+    "model": "api.product",
+    "pk": 12,
+    "fields": {
+      "name": "Strawberry syrup",
+      "code": "SSYP",
+      "icon": "",
+      "unit": "ounces"
+    }
+  },
+  {
+    "model": "api.receivedInventory",
     "pk": 1,
     "fields": {
-      "product": 2,
-      "recipe": 1,
+      "product": 1,
       "amount": 5
     }
   },
   {
-    "model": "api.ingredient",
+    "model": "api.receivedInventory",
     "pk": 2,
     "fields": {
+      "product": 2,
+      "amount": 5
+    }
+  },
+  {
+    "model": "api.receivedInventory",
+    "pk": 3,
+    "fields": {
       "product": 3,
-      "recipe": 1,
-      "amount": 2
+      "amount": 100
+    }
+  },
+  {
+    "model": "api.receivedInventory",
+    "pk": 4,
+    "fields": {
+      "product": 4,
+      "amount": 100
+    }
+  },
+  {
+    "model": "api.receivedInventory",
+    "pk": 5,
+    "fields": {
+      "product": 5,
+      "amount": 50
+    }
+  },
+  {
+    "model": "api.receivedInventory",
+    "pk": 6,
+    "fields": {
+      "product": 6,
+      "amount": 4
+    }
+  },
+  {
+    "model": "api.receivedInventory",
+    "pk": 7,
+    "fields": {
+      "product": 7,
+      "amount": 8
+    }
+  },
+  {
+    "model": "api.receivedInventory",
+    "pk": 8,
+    "fields": {
+      "product": 8,
+      "amount": 500
+    }
+  },
+  {
+    "model": "api.receivedInventory",
+    "pk": 9,
+    "fields": {
+      "product": 9,
+      "amount": 800
     }
   }
 ]

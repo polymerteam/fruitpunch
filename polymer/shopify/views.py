@@ -120,9 +120,9 @@ def getShopifyOrdersByProduct(request):
 	customer_map = {}
 	for order in shopify_orders:
 		if 'customer' in order:
-			if order['customer']['first_name'] != '':
+			if order['customer']['first_name'] and order['customer']['first_name'] != '':
 				customer_name = order['customer']['first_name']
-			if order['customer']['last_name'] != '':
+			if order['customer']['last_name'] and order['customer']['last_name'] != '':
 				customer_name += ' ' + order['customer']['last_name']
 		else:
 			customer_name = None
@@ -134,7 +134,7 @@ def getShopifyOrdersByProduct(request):
 				matching_product = matching_products.first().product
 				if matching_product:
 					matching_product = matching_product.id
-					if variant_id in order_map:
+					if matching_product in order_map:
 						order_map[matching_product] += quantity
 					else:
 						order_map[matching_product] = quantity
@@ -156,9 +156,9 @@ def getShopifyOrders(request):
 	order_list = []
 	for order in shopify_orders:
 		if 'customer' in order:
-			if order['customer']['first_name'] != '':
+			if order['customer']['first_name'] and order['customer']['first_name'] != '':
 				customer_name = order['customer']['first_name']
-			if order['customer']['last_name'] != '':
+			if order['customer']['last_name'] and order['customer']['last_name'] != '':
 				customer_name += ' ' + order['customer']['last_name']
 		else:
 			customer_name = None
