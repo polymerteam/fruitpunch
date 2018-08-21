@@ -45,7 +45,7 @@ def createShopifyAuthURL(request):
 @api_view(['POST'])
 def createShopifyAuthToken(request):
 	# shop_name = request.data['shopname']
-  	# shop_name = 'polymerstore'
+	# shop_name = 'polymerstore'
 
 	auth_response = request.data['auth_response']
 	code_str = auth_response.split("code=",1)[1]
@@ -113,35 +113,7 @@ def getShopifyProducts(request):
 	# return response;
 @api_view(['GET'])
 def getIngredientsForOrders(request):
-	body = shopifyAPIHelper(request, "admin/orders.json")
-	shopify_orders = body['orders']
-	order_map = {}
-	customer_map = {}
-	for order in shopify_orders:
-		if 'customer' in order:
-			if order['customer']['first_name'] and order['customer']['first_name'] != '':
-				customer_name = order['customer']['first_name']
-			if order['customer']['last_name'] and order['customer']['last_name'] != '':
-				customer_name += ' ' + order['customer']['last_name']
-		else:
-			customer_name = None
-		for line_item in order['line_items']:
-			variant_id = line_item['variant_id']
-			quantity = line_item['quantity']
-			matching_products = ShopifySKU.objects.filter(variant_id=variant_id)
-			if matching_products.count() > 0:
-				matching_product = matching_products.first().product
-				if matching_product:
-					matching_product = matching_product.id
-					if matching_product in order_map:
-						order_map[matching_product] += quantity
-					else:
-						order_map[matching_product] = quantity
-						customer_map[matching_product] = []
-					customer_map[matching_product].append(customer_name)
-	order_list = []
-	for obj in order_map:
-		order_list.append({'product_id': obj, 'total_amount': order_map[obj], 'customer_name_list': customer_map[obj]})
+	order_list = shopifyOrdersByProductHelper(request)
 
 	ingredient_amount_map = {}
 	for item in order_list:
@@ -156,25 +128,36 @@ def getIngredientsForOrders(request):
 				ingredient_amount_map[ingredient.product.id] += added_amt
 			else:
 				ingredient_amount_map[ingredient.product.id] = added_amt
-
 	ing_list = []
 	for obj in ingredient_amount_map:
-		# TODO: amount needed should subtract the amount received of that ingredient
 		qs = Product.objects.filter(pk=obj).annotate(in_progress_amount=Coalesce(Sum('batches__amount', filter=Q(batches__status='i')), 0))
 		qs = qs.annotate(completed_amount=Coalesce(Sum('batches__amount', filter=Q(batches__status='c')), 0))
 		qs = qs.annotate(received_amount_total=Coalesce(Sum('received_inventory__amount'), 0))
-		qs = qs.annotate(received_amount=F('received_amount_total')-F('in_progress_amount')-F('completed_amount'))
-		inventory_amount = qs[0].received_amount
+		
+		amount_used = Batch.objects.filter(is_trashed=False, status='c')\
+			.annotate(ingredient_amount=Sum('active_recipe__ingredients__amount', filter=Q(active_recipe__ingredients__product__id=obj)))\
+			.annotate(recipe_batch_size=F('active_recipe__default_batch_size'))\
+			.annotate(amt_in_batch=F('amount')*F('ingredient_amount')/F('recipe_batch_size'))\
+			.aggregate(Sum('amt_in_batch'))
+		if not amount_used['amt_in_batch__sum']:
+			amount_used = 0
+		else:
+			amount_used = amount_used['amt_in_batch__sum']
+		inventory_amount = qs[0].received_amount_total - amount_used + qs[0].completed_amount
+
 		ing_list.append({'product_id': obj, 'amount_needed': ingredient_amount_map[obj], 'amount_in_inventory': inventory_amount})
 
 	serializer = IngredientAmountSerializer(ing_list, many=True)
 	return Response(serializer.data)
 
-			
-
-
 @api_view(['GET'])
 def getShopifyOrdersByProduct(request):	
+	order_list = shopifyOrdersByProductHelper(request)
+	serializer = ShopifyOrderSerializer(order_list, many=True)
+	return Response(serializer.data)
+
+
+def shopifyOrdersByProductHelper(request):
 	body = shopifyAPIHelper(request, "admin/orders.json")
 	shopify_orders = body['orders']
 	order_map = {}
@@ -204,8 +187,7 @@ def getShopifyOrdersByProduct(request):
 	order_list = []
 	for obj in order_map:
 		order_list.append({'product_id': obj, 'total_amount': order_map[obj], 'customer_name_list': customer_map[obj]})
-	serializer = ShopifyOrderSerializer(order_list, many=True)
-	return Response(serializer.data)
+	return order_list
 
 
 @api_view(['GET'])

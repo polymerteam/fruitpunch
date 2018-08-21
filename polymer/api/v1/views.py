@@ -104,28 +104,28 @@ class InventoryList(generics.ListAPIView):
     queryset = Product.objects.all().annotate(in_progress_amount=Coalesce(Sum('batches__amount', filter=Q(batches__status='i')), 0))
     queryset = queryset.annotate(completed_amount=Coalesce(Sum('batches__amount', filter=Q(batches__status='c')), 0))
     queryset = queryset.annotate(received_amount_total=Coalesce(Sum('received_inventory__amount'), 0))
-    queryset = queryset.annotate(received_amount=F('received_amount_total')-F('in_progress_amount')-F('completed_amount'))
-    # queryset = queryset.annotate(asdf=F('id'))
+    # queryset = queryset.annotate(received_amount=F('received_amount_total')-F('in_progress_amount')-F('completed_amount'))
+    # TODO: we also need to get all the batches which have no active recipe that match this product and subtracted those that are completed
 
+    results = []
+    for product in queryset:
+      #received amount also needs to subtract the amount that was used as an ingredient to batches that were completed
+      # should we also subtract the amount that is being used for in progress batches??
+      amount_used = Batch.objects.filter(is_trashed=False, status='c')\
+        .annotate(ingredient_amount=Sum('active_recipe__ingredients__amount', filter=Q(active_recipe__ingredients__product=product)))\
+        .annotate(recipe_batch_size=F('active_recipe__default_batch_size'))\
+        .annotate(amt_in_batch=F('amount')*F('ingredient_amount')/F('recipe_batch_size'))\
+        .aggregate(Sum('amt_in_batch'))
+      if not amount_used['amt_in_batch__sum']:
+        amount_used = 0
+      else:
+        amount_used = amount_used['amt_in_batch__sum']
+      # received = product.received_amount - amount_used
+      available = product.received_amount_total - amount_used + product.completed_amount
+      # results.append({'id': product.id, 'in_progress_amount': product.in_progress_amount, 'completed_amount': product.completed_amount, 'received_amount': received})
+      results.append({'id': product.id, 'in_progress_amount': product.in_progress_amount, 'available_amount': available})
 
-
-
-
-
-    # queryset = queryset.annotate(asdf=Sum(F('batches__amount')*F('batches__active_recipe__ingredients__amount')/F('batches__active_recipe__default_batch_size'), filter=Q(batches__active_recipe__ingredients__product__id__contains=F('id'))))
-
-    # x = Ingredient.objects.filter(product=OuterRef('pk')).order_by().values('product')
-    # total_product_as_ingredient = x.annotate(amt=Sum(F('amount')/F(''))).values('amt')
-
-
-    # x = Batch.objects.filter(active_recipe__ingredients__product__id__contains=OuterRef('pk')).order_by().values('active_recipe__ingredients__product__id')
-    # total_product_as_ingredient = x.annotate(amt=Sum(F('amount')*F(''))).values('amt')
-
-    # queryset = queryset.annotate(asdf=Subquery(total_product_as_ingredient))
-
-    # TODO: received amount also needs to subtract the amount that is being used as an ingredient to batches that were completed
-    queryset = queryset.values('id', 'in_progress_amount', 'completed_amount', 'received_amount')
-    return queryset
+    return results
 
 
 # takes in data of the format:

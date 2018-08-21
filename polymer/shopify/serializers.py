@@ -6,40 +6,30 @@ from django.db.models.functions import Coalesce
 
 class ShopifyOrderSerializer(serializers.Serializer):
 	product = serializers.SerializerMethodField()
-	total_amount = serializers.SerializerMethodField()
+	total_amount = serializers.IntegerField()
 	customer_list = serializers.SerializerMethodField()
 
 	def get_product(self, obj):
 		return ProductSerializer(Product.objects.get(pk=obj['product_id'])).data
-
-	def get_total_amount(self, obj):
-		return obj['total_amount'] or 0
 
 	def get_customer_list(self, obj):
 		return obj['customer_name_list'] or []
 
 class IngredientAmountSerializer(serializers.Serializer):
 	product = serializers.SerializerMethodField()
-	amount_needed = serializers.SerializerMethodField()
-	amount_in_inventory = serializers.SerializerMethodField()
+	amount_needed = serializers.DecimalField(max_digits=10, decimal_places=3, coerce_to_string=False)
+	amount_in_inventory = serializers.DecimalField(max_digits=10, decimal_places=3, coerce_to_string=False)
 
 	def get_product(self, obj):
 		return ProductSerializer(Product.objects.get(pk=obj['product_id'])).data
 
-	def get_amount_needed(self, obj):
-		return obj['amount_needed'] or 0
-
-	def get_amount_in_inventory(self, obj):
-		return obj['amount_in_inventory'] or 0
-
-
 
 class ShopifySimpleOrderSerializer(serializers.Serializer):
-	order_number = serializers.SerializerMethodField()
-	order_name = serializers.SerializerMethodField()
-	customer_name = serializers.SerializerMethodField()
+	order_number = serializers.IntegerField()
+	order_name = serializers.CharField()
+	customer_name = serializers.CharField()
 	line_items = serializers.SerializerMethodField()
-	created_at = serializers.SerializerMethodField()
+	created_at = serializers.DateTimeField()
 
 	def get_line_items(self, obj):
 		line_item_list = []
@@ -52,17 +42,6 @@ class ShopifySimpleOrderSerializer(serializers.Serializer):
 			line_item_list.append({'product': product, 'shopify_id': item['shopify_id'], 'shopify_name': item['shopify_name'], 'amount': amount})
 		return line_item_list
 
-	def get_order_number(self, obj):
-		return obj['order_number'] or 0
-
-	def get_order_name(self, obj):
-		return obj['order_name'] or ''
-
-	def get_customer_name(self, obj):
-		return obj['customer_name']
-
-	def get_created_at(self, obj):
-		return obj['created_at']
 
 
 
