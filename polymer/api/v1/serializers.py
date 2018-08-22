@@ -22,6 +22,10 @@ class TeamSerializer(serializers.ModelSerializer):
 		fields = ('id', 'name', 'shopify_store_name', 'shopify_access_token')
 
 class ProductSerializer(serializers.ModelSerializer):
+	def __init__(self, *args, **kwargs):
+		many = kwargs.pop('many', False)
+		super(ProductSerializer, self).__init__(many=many, *args, **kwargs)
+
 	class Meta:
 		model = Product
 		fields = ('id', 'name', 'code', 'icon', 'unit', 'is_trashed', 'created_at')

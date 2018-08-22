@@ -10,6 +10,7 @@ urlpatterns = [
 
     url(r'^products/$', views.ProductList.as_view()),
     url(r'^products/(?P<pk>[0-9]+)/$', views.ProductDetail.as_view()),
+    url(r'^products/bulk/$', views.BulkProductCreate.as_view()),
 
     url(r'^shopify-skus/$', views.ShopifySKUList.as_view()),
     url(r'^shopify-skus/(?P<pk>[0-9]+)/$', views.ShopifySKUDetail.as_view()),
