@@ -140,6 +140,20 @@ class InventoryList(generics.ListAPIView):
 # >>> Post.objects.annotate(newest_commenter_email=Subquery(newest.values('email')[:1]))
 
 
+class BulkProductCreate(generics.CreateAPIView):
+  queryset = Product.objects.all()
+  serializer_class = ProductSerializer
+
+  def create(self, request, *args, **kwargs):
+    product_list = request.data['products']
+    serializer = self.get_serializer(data=product_list, many=True)
+    if serializer.is_valid():
+      serializer.save()
+      headers = self.get_success_headers(serializer.data)
+      return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
+
+
 # takes in data of the format:
 # received: [{"product_id": 2, "amount": 2.3}, {"product_id": 4, "amount": 6}]
 # {"received": [{"product_id": 2, "amount": 2.3}, {"product_id": 4, "amount": 6}]}
