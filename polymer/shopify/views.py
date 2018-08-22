@@ -118,6 +118,7 @@ def getIngredientsForOrders(request):
 	ingredient_amount_map = {}
 	for item in order_list:
 		product = item['product_id']
+		# the total amount is already the shopify amount multiplied by the shopify to polymer conversion - e.g. 1 orange marmalade on shopify is x polymer orange marmalade units
 		amt = item['total_amount']
 		matching_recipe = Recipe.objects.filter(is_trashed=False, product=product).order_by('-created_at').first()
 		recipe_size = matching_recipe.default_batch_size
@@ -176,12 +177,14 @@ def shopifyOrdersByProductHelper(request):
 			matching_products = ShopifySKU.objects.filter(variant_id=variant_id)
 			if matching_products.count() > 0:
 				matching_product = matching_products.first().product
+				conversion_factor = matching_products.first().conversion_factor
 				if matching_product:
 					matching_product = matching_product.id
 					if matching_product in order_map:
-						order_map[matching_product] += quantity
+						# multiply the number of shopify items by the shopify to polymer conversion factor
+						order_map[matching_product] += quantity*conversion_factor
 					else:
-						order_map[matching_product] = quantity
+						order_map[matching_product] = quantity*conversion_factor
 						customer_map[matching_product] = []
 					customer_map[matching_product].append(customer_name)
 	order_list = []
@@ -216,11 +219,14 @@ def getShopifyOrders(request):
 			matching_products = ShopifySKU.objects.filter(variant_id=variant_id)
 			if matching_products.count() > 0:
 				matching_product = matching_products.first().product
+				conversion_factor = matching_products.first().conversion_factor
 				if matching_product:
 					matching_product = matching_product.id
+					polymer_amount = conversion_factor*quantity
 			else:
 				matching_product = None
-			line_item_list.append({'product_id': matching_product, 'shopify_id': variant_id, 'shopify_name': shopify_item_name, 'amount': quantity})
+				polymer_amount = None
+			line_item_list.append({'product_id': matching_product, 'shopify_id': variant_id, 'shopify_name': shopify_item_name, 'amount': quantity, 'polymer_amount': polymer_amount})
 		order_list.append({'order_number': order_number, 'order_name': order_name, 'created_at': order_date, 'customer_name': customer_name, 'line_items': line_item_list})
 
 	serializer = ShopifySimpleOrderSerializer(order_list, many=True)

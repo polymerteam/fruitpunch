@@ -31,7 +31,7 @@ class ShopifySKUSerializer(serializers.ModelSerializer):
 	product_id = serializers.PrimaryKeyRelatedField(source='product', queryset=Product.objects.all(), write_only=True)
 	class Meta:
 		model = ShopifySKU
-		fields = ('id', 'name', 'variant_id', 'variant_sku', 'product', 'product_id')
+		fields = ('id', 'name', 'variant_id', 'variant_sku', 'product', 'product_id', 'conversion_factor')
 
 class IngredientSerializer(serializers.ModelSerializer):
 	product = ProductSerializer(read_only=True)

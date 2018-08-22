@@ -39,7 +39,7 @@ class ShopifySimpleOrderSerializer(serializers.Serializer):
 			else:
 				product = None
 			amount = item['amount']
-			line_item_list.append({'product': product, 'shopify_id': item['shopify_id'], 'shopify_name': item['shopify_name'], 'amount': amount})
+			line_item_list.append({'product': product, 'shopify_id': item['shopify_id'], 'shopify_name': item['shopify_name'], 'amount': amount, 'polymer_amount': item['polymer_amount']})
 		return line_item_list
 
 

@@ -22,14 +22,17 @@ class Command(BaseCommand):
 
 		lemon_curd_shopify = ShopifySKU.objects.filter(name="Lemon curd").first()
 		lemon_curd_shopify.product = lemon_curd
+		lemon_curd_shopify.conversion_factor = 12.0
 		lemon_curd_shopify.save()
 
 		orange_marmalade_shopify = ShopifySKU.objects.filter(name="Orange Marmalade").first()
 		orange_marmalade_shopify.product = orange_marmalade
+		orange_marmalade_shopify.conversion_factor = 8.0
 		orange_marmalade_shopify.save()
 
 		strawberry_syrup_shopify = ShopifySKU.objects.filter(name="Strawberry syrup").first()
 		strawberry_syrup_shopify.product = strawberry_syrup
+		strawberry_syrup_shopify.conversion_factor = 10.0
 		strawberry_syrup_shopify.save()
 
 
