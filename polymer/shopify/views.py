@@ -158,56 +158,107 @@ def getShopifyOrdersByProduct(request):
 	return Response(serializer.data)
 
 
+def formatCustomerName(order):
+	if 'customer' in order:
+		if order['customer']['first_name'] and order['customer']['first_name'] != '':
+			customer_name = order['customer']['first_name']
+		if order['customer']['last_name'] and order['customer']['last_name'] != '':
+			customer_name += ' ' + order['customer']['last_name']
+	else:
+		customer_name = None
+	return customer_name
+
+def getOrCreateOrder(orders, status):
+	order_ids = []
+	for order in orders:
+		customer_name = formatCustomerName(order)
+		order_number = order['order_number']
+		order_name = order['name']
+		order_date = order['created_at']
+		status_url = order['order_status_url']
+
+		matching_orders = Order.objects.filter(channel='shopify', number=order_number).order_by('-created_at')
+		if matching_orders.count() > 0:
+			new_order = matching_orders.first()
+			new_order.status = status
+			new_order.save()
+		else:
+			new_order = Order.objects.create(channel='shopify', number=order_number, name=order_name, created_at=order_date, url=status_url, status=status)
+
+		order_ids.append(new_order.id)
+
+		for line_item in order['line_items']:
+			variant_id = line_item['variant_id']
+			quantity = line_item['quantity']
+			matching_sku = ShopifySKU.objects.filter(variant_id=variant_id).first()
+
+			new_li = LineItem.objects.get_or_create(order=new_order, shopify_sku=matching_sku, num_units=quantity)
+
+	return order_ids
+
+@api_view(['GET'])
+def loadShopifyOrdersIntoPolymer(request):
+	# get all open orders
+	body = shopifyAPIHelper(request, "admin/orders.json")
+	open_shopify_orders = body['orders']
+	open_order_ids = getOrCreateOrder(open_shopify_orders, 'i')
+
+	body = shopifyAPIHelper(request, "admin/orders.json?status=closed")
+	closed_shopify_orders = body['orders']
+	closed_order_ids = getOrCreateOrder(closed_shopify_orders, 'c')
+
+	# maybe delete the cancelled orders instead???
+	body = shopifyAPIHelper(request, "admin/orders.json?status=cancelled")
+	cancelled_shopify_orders = body['orders']
+	cancelled_order_ids = getOrCreateOrder(cancelled_shopify_orders, 'x')
+
+	orders = Order.objects.filter(pk__in=open_order_ids)
+
+	serializer = OrderSerializer(orders, many=True)
+	return Response(serializer.data)
+
+
+def getProductFromSKU(variant_id):
+	matching_products = ShopifySKU.objects.filter(variant_id=variant_id)
+	matching_product_id = None
+	conversion_factor = None
+	if matching_products.count() > 0:
+		matching_product = matching_products.first().product
+		conversion_factor = matching_products.first().conversion_factor
+		if matching_product:
+			matching_product_id = matching_product.id
+	return matching_product_id, conversion_factor
+
 def shopifyOrdersByProductHelper(request):
 	body = shopifyAPIHelper(request, "admin/orders.json")
 	shopify_orders = body['orders']
 	order_map = {}
 	customer_map = {}
 	for order in shopify_orders:
-		if 'customer' in order:
-			if order['customer']['first_name'] and order['customer']['first_name'] != '':
-				customer_name = order['customer']['first_name']
-			if order['customer']['last_name'] and order['customer']['last_name'] != '':
-				customer_name += ' ' + order['customer']['last_name']
-		else:
-			customer_name = None
+		customer_name = formatCustomerName(order)
 		for line_item in order['line_items']:
 			variant_id = line_item['variant_id']
 			quantity = line_item['quantity']
-			matching_products = ShopifySKU.objects.filter(variant_id=variant_id)
-			if matching_products.count() > 0:
-				matching_product = matching_products.first().product
-				conversion_factor = matching_products.first().conversion_factor
-				if matching_product:
-					matching_product = matching_product.id
-					if matching_product in order_map:
-						# multiply the number of shopify items by the shopify to polymer conversion factor
-						order_map[matching_product] += quantity*conversion_factor
-					else:
-						order_map[matching_product] = quantity*conversion_factor
-						customer_map[matching_product] = []
-					customer_map[matching_product].append(customer_name)
+			matching_product, conversion_factor = getProductFromSKU(variant_id)
+			if matching_product:
+				if matching_product in order_map:
+					order_map[matching_product] += quantity*conversion_factor
+				else:
+					order_map[matching_product] = quantity*conversion_factor
+					customer_map[matching_product] = []
+				customer_map[matching_product].append(customer_name)
 	order_list = []
 	for obj in order_map:
 		order_list.append({'product_id': obj, 'total_amount': order_map[obj], 'customer_name_list': customer_map[obj]})
 	return order_list
 
-
 @api_view(['GET'])
 def getShopifyOrders(request):	
 	body = shopifyAPIHelper(request, "admin/orders.json")
 	shopify_orders = body['orders']
-	order_map = {}
-	customer_map = {}
 	order_list = []
 	for order in shopify_orders:
-		if 'customer' in order:
-			if order['customer']['first_name'] and order['customer']['first_name'] != '':
-				customer_name = order['customer']['first_name']
-			if order['customer']['last_name'] and order['customer']['last_name'] != '':
-				customer_name += ' ' + order['customer']['last_name']
-		else:
-			customer_name = None
+		customer_name = formatCustomerName(order)
 		order_number = order['order_number']
 		order_name = order['name']
 		order_date = order['created_at']
@@ -216,15 +267,10 @@ def getShopifyOrders(request):
 			variant_id = line_item['variant_id']
 			quantity = line_item['quantity']
 			shopify_item_name = line_item['name']
-			matching_products = ShopifySKU.objects.filter(variant_id=variant_id)
-			if matching_products.count() > 0:
-				matching_product = matching_products.first().product
-				conversion_factor = matching_products.first().conversion_factor
-				if matching_product:
-					matching_product = matching_product.id
-					polymer_amount = conversion_factor*quantity
+			matching_product, conversion_factor = getProductFromSKU(variant_id)
+			if matching_product:
+				polymer_amount = conversion_factor*quantity
 			else:
-				matching_product = None
 				polymer_amount = None
 			line_item_list.append({'product_id': matching_product, 'shopify_id': variant_id, 'shopify_name': shopify_item_name, 'amount': quantity, 'polymer_amount': polymer_amount})
 		order_list.append({'order_number': order_number, 'order_name': order_name, 'created_at': order_date, 'customer_name': customer_name, 'line_items': line_item_list})

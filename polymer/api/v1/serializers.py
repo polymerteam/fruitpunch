@@ -59,9 +59,7 @@ class RecipeCreateWithIngredientsSerializer(serializers.ModelSerializer):
 	ingredients_data = serializers.CharField(write_only=True)
 
 	def create(self, validated_data):
-		# print(validated_data)
 		ingredients = validated_data.pop('ingredients_data')
-		# print(validated_data['product'])
 		matching_recipes = Recipe.objects.filter(product=validated_data['product'], is_trashed=False)
 		if matching_recipes.count() > 0:
 			raise serializers.ValidationError({'product': 'A recipe already exists for this Product'})
@@ -129,4 +127,64 @@ class ReceivedInventorySerializer(serializers.ModelSerializer):
 	class Meta:
 		model = ReceivedInventory
 		fields = ('id', 'product', 'product_id', 'amount', 'dollar_value', 'received_at', 'is_trashed')
+
+
+class LineItemSerializer(serializers.ModelSerializer):
+	shopify_sku = ShopifySKUSerializer(read_only=True)
+	shopify_sku_id = serializers.PrimaryKeyRelatedField(source='shopify_sku', queryset=ShopifySKU.objects.all(), write_only=True)
+	product = ProductSerializer(read_only=True)
+	product_id = serializers.PrimaryKeyRelatedField(source='product', queryset=Product.objects.all(), write_only=True)
+	order_id = serializers.PrimaryKeyRelatedField(source='order', queryset=Order.objects.all())
+
+	class Meta:
+		model = LineItem
+		fields = ('id', 'shopify_sku', 'shopify_sku_id', 'num_units', 'product', 'product_id', 'amount', 'order_id')
+
+
+class OrderSerializer(serializers.ModelSerializer):
+	line_items = LineItemSerializer(many=True, read_only=True)
+
+	class Meta:
+		model = Order
+		fields = ('id', 'status', 'name', 'number', 'channel', 'created_at', 'due_date', 'url', 'line_items')
+
+
+class OrderCreateWithLineItemsSerializer(serializers.ModelSerializer):
+	line_items = LineItemSerializer(many=True, read_only=True)
+	line_items_data = serializers.CharField(write_only=True)
+
+	def create(self, validated_data):
+		line_items = validated_data.pop('line_items_data')
+		line_items = json.loads(line_items)
+		renumber = False
+		if 'number' in validated_data:
+			matching_order_nums = Order.objects.filter(number=validated_data['number'], channel='manual').count()
+			if matching_order_nums > 0:
+				renumber = True
+		if 'number' not in validated_data or renumber:
+			last_order = Order.objects.filter(number__isnull=False, channel='manual').order_by('-number')
+			highest_number = 0
+			if last_order.count() > 0:
+				highest_number = last_order.first().number
+			validated_data['number'] = highest_number + 1
+		if 'name' not in validated_data:
+			validated_data['name'] = 'Manual Order ' + str(validated_data['number'])
+		if 'created_at' not in validated_data:
+			validated_data['created_at'] = datetime.today()
+
+		order = Order.objects.create(**validated_data)
+
+		for line_item in line_items:
+			product = Product.objects.get(pk=line_item['product'])
+			amount = line_item['amount']
+			LineItem.objects.create(order=order, product=product, amount=amount, shopify_sku=None, num_units=None)
+		return order
+
+	class Meta:
+		model = Order
+		extra_kwargs = {'line_items_data': {'write_only': True}}
+		fields = ('id', 'status', 'name', 'number', 'channel', 'created_at', 'due_date', 'url', 'line_items', 'line_items_data')
+
+
+
 

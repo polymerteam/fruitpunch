@@ -163,6 +163,43 @@ class ReceivedInventoryDetail(generics.RetrieveUpdateDestroyAPIView):
   queryset = ReceivedInventory.objects.all()
   serializer_class = ReceivedInventorySerializer
 
+
+class OrderList(generics.ListCreateAPIView):
+  queryset = Order.objects.all()
+  serializer_class = OrderSerializer
+
+  def get_queryset(self):
+    queryset = Order.objects.all()
+
+    status = self.request.query_params.get('status', None)
+    channel = self.request.query_params.get('channel', None)
+    if status is not None:
+      queryset = queryset.filter(status=status)
+    if channel is not None:
+      queryset = queryset.filter(channel=channel)
+
+
+    return queryset
+
+class OrderDetail(generics.RetrieveUpdateDestroyAPIView):
+  queryset = Order.objects.all()
+  serializer_class = OrderSerializer
+
+
+# this takes in basic order information, and a list of products for lineitems and their amounts
+# request data:
+# status: i
+# name: maya's order
+# channel: manual
+# created_at: 
+# due_date: 
+# url: 
+# default_batch_size: 2.5
+# line_items_data: [{"product":"2","amount":"0.5"},{"product":"3","amount":"2"}]
+class OrderCreateWithLineItems(generics.ListCreateAPIView):
+    queryset = Order.objects.all()
+    serializer_class = OrderCreateWithLineItemsSerializer
+
 # class UserProfileList(generics.ListAPIView):
 #   queryset = UserProfile.objects.all()
 #   serializer_class = UserProfileSerializer

@@ -11,6 +11,7 @@ urlpatterns = [
     url(r'^get-shopify-orders-product/$', views.getShopifyOrdersByProduct, name='x'),
     url(r'^get-shopify-orders/$', views.getShopifyOrders, name='x'),
     url(r'^ingredients-for-orders/$', views.getIngredientsForOrders, name='x'),
+    url(r'^load-orders-to-polymer/$', views.loadShopifyOrdersIntoPolymer, name='x'),
     # url(r'^clear-token/$', views.clearToken, name='b'),
 
 

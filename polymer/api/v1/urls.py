@@ -30,6 +30,10 @@ urlpatterns = [
     url(r'^received/$', views.ReceivedInventoryList.as_view()),
     url(r'^received/(?P<pk>[0-9]+)/$', views.ReceivedInventoryDetail.as_view()),
 
+    url(r'^orders/$', views.OrderList.as_view()),
+    url(r'^orders/(?P<pk>[0-9]+)/$', views.OrderDetail.as_view()),
+    url(r'^orders/create-with-items/$', views.OrderCreateWithLineItems.as_view()),
+
     # create product and match sku endpoint - takes in a shopifysku id and information to create a new product
 
     # url(r'^orders-by-product/$', views.OrdersByProductList.as_view()),

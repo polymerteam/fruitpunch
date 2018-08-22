@@ -24,7 +24,7 @@ class ShopifySKU(models.Model):
 	variant_sku = models.CharField(max_length=100, null=True)
 	product = models.ForeignKey(Product, related_name='shopify_skus', on_delete=models.CASCADE, null=True)
 	conversion_factor = models.DecimalField(default=1, max_digits=10, decimal_places=6)
-	# need the product to shopify amount conversion (e.g. 1 shopify unit = 500 grams of the product)
+	# CHANGE ShopifySKU to ExternalSKU and also include a row with the channel e.g. shopify
 
 
 class Recipe(models.Model):
@@ -66,24 +66,31 @@ class ReceivedInventory(models.Model):
 	dollar_value = models.DecimalField(max_digits=10, decimal_places=2, null=True)
 
 
-# class Order(models.Model):
-# 	name = 
-# 	number = 
-# 	channel = 
-# 	created_at = 
-# 	due_date = 
-# 	status = 
+class Order(models.Model):
+	STATUSES = (
+		('i', 'in progress'),
+		('c', 'completed'),
+		('x', 'cancelled')
+	)
+	status = models.CharField(max_length=1, choices=STATUSES, default='i')
+	name = models.CharField(max_length=300, blank=True)
+	number = models.IntegerField(null=True, db_index=True)
+	channel = models.CharField(max_length=20, default='manual')
+	created_at = models.DateTimeField(blank=True, null=True)
+	due_date = models.DateTimeField(blank=True, null=True)
+	url = models.CharField(max_length=200, blank=True, null=True)
+	# add in customer name
 
 
-# class LineItem(models.Model):
-# 	order = 
-# 	product = 
-# 	amount = 
-
-
-
-
-
+class LineItem(models.Model):
+	order = models.ForeignKey(Order, related_name='line_items', on_delete=models.CASCADE)
+	# change this from shopifysku to externalsku
+	shopify_sku = models.ForeignKey(ShopifySKU, related_name='line_items', on_delete=models.CASCADE, null=True)
+	num_units = models.IntegerField(null=True)
+	# if it's a manual order then the shopify_su and num_units will be null and we will use product and amount instead
+	# and then instead of num_units we just straight up have amount?
+	product = models.ForeignKey(Product, related_name='line_items', on_delete=models.CASCADE, null=True)
+	amount = models.DecimalField(default=1, max_digits=10, decimal_places=3, null=True)
 
 
 # class UserProfile(models.Model):
