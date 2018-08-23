@@ -79,6 +79,7 @@ class Order(models.Model):
 	created_at = models.DateTimeField(blank=True, null=True)
 	due_date = models.DateTimeField(blank=True, null=True)
 	url = models.CharField(max_length=200, blank=True, null=True)
+	customer = models.CharField(max_length=150, blank=True, null=True)
 	# add in customer name
 
 

@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 import csv
 
 from api.models import *
+from api.v1.views import *
 # from api.v1.serializers import *
 from shopify.serializers import *
 from django.http import HttpResponse
@@ -15,6 +16,8 @@ import requests
 import datetime
 import random
 import simplejson as json
+from django.contrib.postgres.aggregates.general import ArrayAgg
+
 
 
 SHOPIFY_SCOPE = 'read_all_orders,read_orders,write_orders,read_products,read_customers'
@@ -113,16 +116,22 @@ def getShopifyProducts(request):
 	# return response;
 @api_view(['GET'])
 def getIngredientsForOrders(request):
-	order_list = shopifyOrdersByProductHelper(request)
+	# get all the amounts required for each product from unfulfilled orders
+	orders_by_product = Product.objects.filter(shopify_skus__line_items__order__status='i')\
+		.annotate(total_num_units=Sum('shopify_skus__line_items__num_units', filter=Q(shopify_skus__line_items__order__status='i')))\
+		.annotate(conversion_factors=Avg('shopify_skus__conversion_factor', filter=Q(shopify_skus__line_items__order__status='i')))\
+		.annotate(total_amount=ExpressionWrapper(F('total_num_units')*F('conversion_factors'), output_field=DecimalField()))
+		# .annotate(customer_list=ArrayAgg('shopify_skus__line_items__order__customer', filter=Q(shopify_skus__line_items__order__status='i')))\
 
 	ingredient_amount_map = {}
-	for item in order_list:
-		product = item['product_id']
+	for item in orders_by_product:
 		# the total amount is already the shopify amount multiplied by the shopify to polymer conversion - e.g. 1 orange marmalade on shopify is x polymer orange marmalade units
-		amt = item['total_amount']
+		product = item.id
+		amt = item.total_amount
 		matching_recipe = Recipe.objects.filter(is_trashed=False, product=product).order_by('-created_at').first()
 		recipe_size = matching_recipe.default_batch_size
 		ingredients = Ingredient.objects.filter(recipe=matching_recipe, is_trashed=False)
+		# for each product, get the amounts of the ingredients that are needed to make it
 		for ingredient in ingredients:
 			added_amt = (ingredient.amount/recipe_size)*amt
 			if ingredient.product.id in ingredient_amount_map:
@@ -130,22 +139,11 @@ def getIngredientsForOrders(request):
 			else:
 				ingredient_amount_map[ingredient.product.id] = added_amt
 	ing_list = []
-	for obj in ingredient_amount_map:
-		qs = Product.objects.filter(pk=obj).annotate(in_progress_amount=Coalesce(Sum('batches__amount', filter=Q(batches__status='i')), 0))
-		qs = qs.annotate(completed_amount=Coalesce(Sum('batches__amount', filter=Q(batches__status='c')), 0))
-		qs = qs.annotate(received_amount_total=Coalesce(Sum('received_inventory__amount'), 0))
-		
-		amount_used = Batch.objects.filter(is_trashed=False, status='c')\
-			.annotate(ingredient_amount=Sum('active_recipe__ingredients__amount', filter=Q(active_recipe__ingredients__product__id=obj)))\
-			.annotate(recipe_batch_size=F('active_recipe__default_batch_size'))\
-			.annotate(amt_in_batch=F('amount')*F('ingredient_amount')/F('recipe_batch_size'))\
-			.aggregate(Sum('amt_in_batch'))
-		if not amount_used['amt_in_batch__sum']:
-			amount_used = 0
-		else:
-			amount_used = amount_used['amt_in_batch__sum']
+	# for each needed ingredient, annotate it with how much of it is currently in inventory
+	for obj in ingredient_amount_map:		
+		qs = annotateProductWithInventory(Product.objects.filter(pk=obj))
+		amount_used = amountUsedOfProduct(obj)
 		inventory_amount = qs[0].received_amount_total - amount_used + qs[0].completed_amount
-
 		ing_list.append({'product_id': obj, 'amount_needed': ingredient_amount_map[obj], 'amount_in_inventory': inventory_amount})
 
 	serializer = IngredientAmountSerializer(ing_list, many=True)
@@ -181,9 +179,12 @@ def getOrCreateOrder(orders, status):
 		if matching_orders.count() > 0:
 			new_order = matching_orders.first()
 			new_order.status = status
+			new_order.customer = customer_name
+			new_order.url = status_url
+			new_order.name = order_name
 			new_order.save()
 		else:
-			new_order = Order.objects.create(channel='shopify', number=order_number, name=order_name, created_at=order_date, url=status_url, status=status)
+			new_order = Order.objects.create(channel='shopify', number=order_number, name=order_name, created_at=order_date, url=status_url, status=status, customer=customer_name)
 
 		order_ids.append(new_order.id)
 

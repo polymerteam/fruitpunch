@@ -3,7 +3,7 @@ from api.models import *
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from smtplib import SMTPException
-from django.db.models import Count, F, Q, Sum
+from django.db.models import Count, F, Q, Sum, Avg, ExpressionWrapper
 from datetime import date, datetime, timedelta
 import operator
 import pytz
@@ -150,7 +150,7 @@ class OrderSerializer(serializers.ModelSerializer):
 
 	class Meta:
 		model = Order
-		fields = ('id', 'status', 'name', 'number', 'channel', 'created_at', 'due_date', 'url', 'line_items')
+		fields = ('id', 'status', 'name', 'number', 'channel', 'customer', 'created_at', 'due_date', 'url', 'line_items')
 
 
 class OrderCreateWithLineItemsSerializer(serializers.ModelSerializer):

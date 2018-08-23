@@ -97,6 +97,24 @@ class BatchDetail(generics.RetrieveUpdateDestroyAPIView):
   serializer_class = BatchSerializer
 
 
+def annotateProductWithInventory(queryset):
+  queryset = queryset.annotate(in_progress_amount=Coalesce(Sum('batches__amount', filter=Q(batches__status='i')), 0))
+  queryset = queryset.annotate(completed_amount=Coalesce(Sum('batches__amount', filter=Q(batches__status='c')), 0))
+  queryset = queryset.annotate(received_amount_total=Coalesce(Sum('received_inventory__amount'), 0))
+  return queryset
+
+def amountUsedOfProduct(product_id):
+  amount_used = Batch.objects.filter(is_trashed=False, status='c')\
+    .annotate(ingredient_amount=Sum('active_recipe__ingredients__amount', filter=Q(active_recipe__ingredients__product__id=product_id)))\
+    .annotate(recipe_batch_size=F('active_recipe__default_batch_size'))\
+    .annotate(amt_in_batch=F('amount')*F('ingredient_amount')/F('recipe_batch_size'))\
+    .aggregate(Sum('amt_in_batch'))
+  if not amount_used['amt_in_batch__sum']:
+    amount_used = 0
+  else:
+    amount_used = amount_used['amt_in_batch__sum']
+  return amount_used
+
 class InventoryList(generics.ListAPIView):
   serializer_class = InventorySerializer
 
@@ -110,26 +128,15 @@ class InventoryList(generics.ListAPIView):
 
     # total_amount_used = amount_used.annotate(total=Sum('amt_in_batch')).values('total')
 
-    queryset = Product.objects.all().annotate(in_progress_amount=Coalesce(Sum('batches__amount', filter=Q(batches__status='i')), 0))
-    queryset = queryset.annotate(completed_amount=Coalesce(Sum('batches__amount', filter=Q(batches__status='c')), 0))
-    queryset = queryset.annotate(received_amount_total=Coalesce(Sum('received_inventory__amount'), 0))
+    queryset = annotateProductWithInventory(Product.objects.all())
     # queryset = queryset.annotate(asdf=Subquery(total_amount_used))
     # TODO: we also need to get all the batches which have no active recipe that match this product and subtracted those that are completed
-
 
     results = []
     for product in queryset:
       #received amount also needs to subtract the amount that was used as an ingredient to batches that were completed
       # should we also subtract the amount that is being used for in progress batches??
-      amount_used = Batch.objects.filter(is_trashed=False, status='c')\
-        .annotate(ingredient_amount=Sum('active_recipe__ingredients__amount', filter=Q(active_recipe__ingredients__product=product)))\
-        .annotate(recipe_batch_size=F('active_recipe__default_batch_size'))\
-        .annotate(amt_in_batch=F('amount')*F('ingredient_amount')/F('recipe_batch_size'))\
-        .aggregate(Sum('amt_in_batch'))
-      if not amount_used['amt_in_batch__sum']:
-        amount_used = 0
-      else:
-        amount_used = amount_used['amt_in_batch__sum']
+      amount_used = amountUsedOfProduct(product.id)
       available = product.received_amount_total - amount_used + product.completed_amount
       results.append({'id': product.id, 'in_progress_amount': product.in_progress_amount, 'available_amount': available})
 
