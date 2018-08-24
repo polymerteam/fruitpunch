@@ -2,6 +2,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import generics
 from api.v1.serializers import *
+from shopify.serializers import *
 import django_filters
 from rest_framework.filters import OrderingFilter
 from rest_framework.views import APIView
@@ -15,6 +16,11 @@ from rest_framework.decorators import api_view
 from django.conf import settings
 from django.db.models import OuterRef, Subquery
 from django.db.models.functions import Coalesce
+from rest_framework.decorators import api_view
+from django.contrib.postgres.aggregates.general import ArrayAgg
+from django.db.models import Value
+from django.db.models.functions import Concat
+
 
 
 class UserList(generics.ListAPIView):
@@ -220,6 +226,42 @@ class OrderDetail(generics.RetrieveUpdateDestroyAPIView):
 class OrderCreateWithLineItems(generics.ListCreateAPIView):
     queryset = Order.objects.all()
     serializer_class = OrderCreateWithLineItemsSerializer
+
+
+@api_view(['GET'])
+def getIngredientsForBatches(request):
+  batches = Batch.objects.filter(status='i')
+  ingredient_amount_map = {}
+
+  b = Batch.objects.filter(status='i')\
+    .annotate(ingredients_list=ArrayAgg(Concat(F('active_recipe__ingredients__product__id'), 
+      Value('|'), 
+      ExpressionWrapper(F('amount')*F('active_recipe__ingredients__amount')/F('active_recipe__default_batch_size'), output_field=DecimalField()), 
+      output_field=CharField())))
+  
+  # for each batch, add the ingredient amount to it's spot in the ingredient amount map
+  ingredient_amount_map = {}
+  for x in b:
+    ingredients = x.ingredients_list
+    for ing in ingredients:
+      parts = ing.split('|')
+      product_id = int(parts[0])
+      amount = float(parts[1])
+      if product_id in ingredient_amount_map:
+        ingredient_amount_map[product_id] += amount
+      else:
+        ingredient_amount_map[product_id] = amount
+
+  ing_list = []
+  for obj in ingredient_amount_map:
+    qs = annotateProductWithInventory(Product.objects.filter(pk=obj))
+    amount_used = amountUsedOfProduct(obj)
+    inventory_amount = qs[0].received_amount_total - amount_used + qs[0].completed_amount
+    ing_list.append({'product_id': obj, 'amount_needed': ingredient_amount_map[obj], 'amount_in_inventory': inventory_amount})
+
+  serializer = IngredientAmountSerializer(ing_list, many=True)
+  return Response(serializer.data)
+
 
 # class UserProfileList(generics.ListAPIView):
 #   queryset = UserProfile.objects.all()

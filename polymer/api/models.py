@@ -54,6 +54,8 @@ class Batch(models.Model):
 	active_recipe = models.ForeignKey(Recipe, related_name="batches", on_delete=models.CASCADE, null=True)
 	amount = models.DecimalField(default=1, max_digits=10, decimal_places=3)
 	is_trashed = models.BooleanField(default=False, db_index=True)
+	calendar_start = models.DateTimeField(blank=True, null=True)
+	calendar_end = models.DateTimeField(blank=True, null=True)
 
 
 # can you receive negative inventory??
@@ -91,7 +93,7 @@ class LineItem(models.Model):
 	# if it's a manual order then the shopify_su and num_units will be null and we will use product and amount instead
 	# and then instead of num_units we just straight up have amount?
 	product = models.ForeignKey(Product, related_name='line_items', on_delete=models.CASCADE, null=True)
-	amount = models.DecimalField(default=1, max_digits=10, decimal_places=3, null=True)
+	amount = models.DecimalField(max_digits=10, decimal_places=3, null=True)
 
 
 # class UserProfile(models.Model):

@@ -101,7 +101,7 @@ class BatchSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = Batch
 		extra_kwargs = {'product_data': {'write_only': True}}
-		fields = ('id', 'status', 'started_at', 'completed_at', 'is_trashed', 'product', 'active_recipe', 'amount', 'product_data')
+		fields = ('id', 'status', 'started_at', 'completed_at', 'is_trashed', 'product', 'active_recipe', 'amount', 'product_data', 'calendar_start', 'calendar_end')
 
 
 class InventorySerializer(serializers.ModelSerializer):

@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from api.models import *
 from api.v1.serializers import *
-from django.db.models import OuterRef, Subquery, DecimalField
+from django.db.models import OuterRef, Subquery, DecimalField, CharField
 from django.db.models.functions import Coalesce
 
 class ShopifyOrderSerializer(serializers.Serializer):
