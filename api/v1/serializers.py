@@ -120,14 +120,14 @@ class ProductSerializer(serializers.ModelSerializer):
 
 	class Meta:
 		model = Product
-		fields = ('id', 'name', 'code', 'icon', 'unit', 'is_trashed', 'created_at')
+		fields = ('id', 'name', 'code', 'icon', 'unit', 'is_trashed', 'created_at', 'team')
 
 class ShopifySKUSerializer(serializers.ModelSerializer):
 	product = ProductSerializer(read_only=True)
 	product_id = serializers.PrimaryKeyRelatedField(source='product', queryset=Product.objects.all(), write_only=True)
 	class Meta:
 		model = ShopifySKU
-		fields = ('id', 'name', 'variant_id', 'variant_sku', 'product', 'product_id', 'conversion_factor')
+		fields = ('id', 'name', 'variant_id', 'variant_sku', 'product', 'product_id', 'conversion_factor', 'team')
 
 class IngredientSerializer(serializers.ModelSerializer):
 	product = ProductSerializer(read_only=True)
@@ -242,7 +242,7 @@ class OrderSerializer(serializers.ModelSerializer):
 
 	class Meta:
 		model = Order
-		fields = ('id', 'status', 'name', 'number', 'channel', 'customer', 'created_at', 'due_date', 'url', 'line_items')
+		fields = ('id', 'status', 'name', 'number', 'channel', 'customer', 'created_at', 'due_date', 'url', 'line_items', 'team')
 
 
 class OrderCreateWithLineItemsSerializer(serializers.ModelSerializer):
@@ -279,7 +279,7 @@ class OrderCreateWithLineItemsSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = Order
 		extra_kwargs = {'line_items_data': {'write_only': True}}
-		fields = ('id', 'status', 'name', 'number', 'channel', 'created_at', 'due_date', 'url', 'line_items', 'line_items_data')
+		fields = ('id', 'status', 'name', 'number', 'channel', 'created_at', 'due_date', 'url', 'line_items', 'line_items_data', 'team')
 
 
 

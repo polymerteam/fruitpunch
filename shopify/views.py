@@ -84,6 +84,8 @@ def createShopifyAuthToken(request):
 @api_view(['GET'])
 def getShopifyProducts(request):	
 	body = shopifyAPIHelper(request, "admin/products.json?fields=id,title,variants")
+	team_id = request.query_params.get('team')
+	team = Team.objects.get(pk=team_id)
 	shopify_products = body['products']
 	for shopify_product in shopify_products:
 		main_title = shopify_product['title']
@@ -93,9 +95,9 @@ def getShopifyProducts(request):
 				variant_title = main_title + " - " + variant['title']
 			variant_id = variant['id']
 			variant_sku = variant['sku']
-			shopifysku = ShopifySKU.objects.filter(variant_id=variant_id)
+			shopifysku = ShopifySKU.objects.filter(variant_id=variant_id, team=team)
 			if shopifysku.count() == 0:
-				ShopifySKU.objects.create(name=variant_title, variant_id=variant_id, variant_sku=variant_sku)
+				ShopifySKU.objects.create(name=variant_title, variant_id=variant_id, variant_sku=variant_sku, team=team)
 			else:
 				sp = shopifysku.first()
 				was_updated = False
@@ -104,6 +106,9 @@ def getShopifyProducts(request):
 					was_updated = True
 				if sp.variant_sku != variant_sku:
 					sp.variant_sku = variant_sku
+					was_updated = True
+				if sp.team != team:
+					sp.team = team
 					was_updated = True
 				if was_updated:
 					sp.save()
@@ -117,7 +122,9 @@ def getShopifyProducts(request):
 @api_view(['GET'])
 def getIngredientsForOrders(request):
 	# get all the amounts required for each product from unfulfilled orders
-	orders_by_product = Product.objects.filter(shopify_skus__line_items__order__status='i')\
+	team_id = request.query_params.get('team')
+	team = Team.objects.get(pk=team_id)
+	orders_by_product = Product.objects.filter(shopify_skus__line_items__order__status='i', team=team)\
 		.annotate(total_num_units=Sum('shopify_skus__line_items__num_units', filter=Q(shopify_skus__line_items__order__status='i')))\
 		.annotate(conversion_factors=Avg('shopify_skus__conversion_factor', filter=Q(shopify_skus__line_items__order__status='i')))\
 		.annotate(total_amount=ExpressionWrapper(F('total_num_units')*F('conversion_factors'), output_field=DecimalField()))
@@ -166,7 +173,7 @@ def formatCustomerName(order):
 		customer_name = None
 	return customer_name
 
-def getOrCreateOrder(orders, status):
+def getOrCreateOrder(orders, status, team):
 	order_ids = []
 	for order in orders:
 		customer_name = formatCustomerName(order)
@@ -175,7 +182,7 @@ def getOrCreateOrder(orders, status):
 		order_date = order['created_at']
 		status_url = order['order_status_url']
 
-		matching_orders = Order.objects.filter(channel='shopify', number=order_number).order_by('-created_at')
+		matching_orders = Order.objects.filter(channel='shopify', number=order_number, team=team).order_by('-created_at')
 		if matching_orders.count() > 0:
 			new_order = matching_orders.first()
 			new_order.status = status
@@ -184,14 +191,14 @@ def getOrCreateOrder(orders, status):
 			new_order.name = order_name
 			new_order.save()
 		else:
-			new_order = Order.objects.create(channel='shopify', number=order_number, name=order_name, created_at=order_date, url=status_url, status=status, customer=customer_name)
+			new_order = Order.objects.create(channel='shopify', number=order_number, team=team, name=order_name, created_at=order_date, url=status_url, status=status, customer=customer_name)
 
 		order_ids.append(new_order.id)
 
 		for line_item in order['line_items']:
 			variant_id = line_item['variant_id']
 			quantity = line_item['quantity']
-			matching_sku = ShopifySKU.objects.filter(variant_id=variant_id).first()
+			matching_sku = ShopifySKU.objects.filter(variant_id=variant_id, team=team).first()
 
 			new_li = LineItem.objects.get_or_create(order=new_order, shopify_sku=matching_sku, num_units=quantity)
 
@@ -199,19 +206,22 @@ def getOrCreateOrder(orders, status):
 
 @api_view(['GET'])
 def loadShopifyOrdersIntoPolymer(request):
+	team_id = request.query_params.get('team')
+	team = Team.objects.get(pk=team_id)
+
 	# get all open orders
 	body = shopifyAPIHelper(request, "admin/orders.json")
 	open_shopify_orders = body['orders']
-	open_order_ids = getOrCreateOrder(open_shopify_orders, 'i')
+	open_order_ids = getOrCreateOrder(open_shopify_orders, 'i', team)
 
 	body = shopifyAPIHelper(request, "admin/orders.json?status=closed")
 	closed_shopify_orders = body['orders']
-	closed_order_ids = getOrCreateOrder(closed_shopify_orders, 'c')
+	closed_order_ids = getOrCreateOrder(closed_shopify_orders, 'c', team)
 
 	# maybe delete the cancelled orders instead???
 	body = shopifyAPIHelper(request, "admin/orders.json?status=cancelled")
 	cancelled_shopify_orders = body['orders']
-	cancelled_order_ids = getOrCreateOrder(cancelled_shopify_orders, 'x')
+	cancelled_order_ids = getOrCreateOrder(cancelled_shopify_orders, 'x', team)
 
 	orders = Order.objects.filter(pk__in=open_order_ids)
 
@@ -219,8 +229,8 @@ def loadShopifyOrdersIntoPolymer(request):
 	return Response(serializer.data)
 
 
-def getProductFromSKU(variant_id):
-	matching_products = ShopifySKU.objects.filter(variant_id=variant_id)
+def getProductFromSKU(variant_id, team):
+	matching_products = ShopifySKU.objects.filter(variant_id=variant_id, team=team)
 	matching_product_id = None
 	conversion_factor = None
 	if matching_products.count() > 0:
@@ -231,6 +241,8 @@ def getProductFromSKU(variant_id):
 	return matching_product_id, conversion_factor
 
 def shopifyOrdersByProductHelper(request):
+	team_id = request.query_params.get('team')
+	team = Team.objects.get(pk=team_id)
 	body = shopifyAPIHelper(request, "admin/orders.json")
 	shopify_orders = body['orders']
 	order_map = {}
@@ -240,7 +252,7 @@ def shopifyOrdersByProductHelper(request):
 		for line_item in order['line_items']:
 			variant_id = line_item['variant_id']
 			quantity = line_item['quantity']
-			matching_product, conversion_factor = getProductFromSKU(variant_id)
+			matching_product, conversion_factor = getProductFromSKU(variant_id, team)
 			if matching_product:
 				if matching_product in order_map:
 					order_map[matching_product] += quantity*conversion_factor
@@ -256,6 +268,8 @@ def shopifyOrdersByProductHelper(request):
 @api_view(['GET'])
 def getShopifyOrders(request):	
 	body = shopifyAPIHelper(request, "admin/orders.json")
+	team_id = request.query_params.get('team')
+	team = Team.objects.get(pk=team_id)
 	shopify_orders = body['orders']
 	order_list = []
 	for order in shopify_orders:
@@ -268,7 +282,7 @@ def getShopifyOrders(request):
 			variant_id = line_item['variant_id']
 			quantity = line_item['quantity']
 			shopify_item_name = line_item['name']
-			matching_product, conversion_factor = getProductFromSKU(variant_id)
+			matching_product, conversion_factor = getProductFromSKU(variant_id, team)
 			if matching_product:
 				polymer_amount = conversion_factor*quantity
 			else:
