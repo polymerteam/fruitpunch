@@ -21,42 +21,47 @@ from django.contrib.postgres.aggregates.general import ArrayAgg
 from django.db.models import Value
 from django.db.models.functions import Concat
 
-
+def teamFilter(queryset, self):
+  team = self.request.query_params.get('team', None)
+  if team is not None:
+    return queryset.filter(team=team)
 
 class UserList(generics.ListAPIView):
   queryset = User.objects.all()
   serializer_class = UserSerializer
 
+
 class UserGet(generics.RetrieveAPIView):
   queryset = User.objects.all()
   serializer_class = UserSerializer
+
 
 class TeamList(generics.ListCreateAPIView):
   queryset = Team.objects.all()
   serializer_class = TeamSerializer
 
+
 class TeamGet(generics.RetrieveAPIView):
   queryset = Team.objects.all()
   serializer_class = TeamSerializer
 
+
 class UserProfileCreate(generics.CreateAPIView):
   queryset = UserProfile.objects.all()
   serializer_class = UserProfileCreateSerializer
+
 
 class UserProfileList(generics.ListAPIView):
   queryset = UserProfile.objects.all()
   serializer_class = UserProfileSerializer
 
   def get_queryset(self):
-    team = self.request.query_params.get('team', None)
-    if team is not None:
-      return UserProfile.objects.filter(team=team)
-    return UserProfile.objects.all()
+    queryset = UserProfile.objects.all()
+    return teamFilter(queryset, self)
 
 class UserProfileDetail(generics.RetrieveUpdateDestroyAPIView):
   queryset = UserProfile.objects.all()
   serializer_class = UserProfileSerializer
-
 
 
 # #######
@@ -65,22 +70,35 @@ class ProductList(generics.ListCreateAPIView):
   queryset = Product.objects.all()
   serializer_class = ProductSerializer
 
+  def get_queryset(self):
+    queryset = Product.objects.all()
+    return teamFilter(queryset, self)
+
 class ProductDetail(generics.RetrieveUpdateDestroyAPIView):
   queryset = Product.objects.all()
   serializer_class = ProductSerializer
+
 
 class ShopifySKUList(generics.ListCreateAPIView):
   queryset = ShopifySKU.objects.all()
   serializer_class = ShopifySKUSerializer
 
+  def get_queryset(self):
+    queryset = ShopifySKU.objects.all()
+    return teamFilter(queryset, self)
+
 class ShopifySKUDetail(generics.RetrieveUpdateDestroyAPIView):
   queryset = ShopifySKU.objects.all()
   serializer_class = ShopifySKUSerializer
+
 
 class RecipeList(generics.ListCreateAPIView):
   queryset = Recipe.objects.all()
   serializer_class = RecipeSerializer
 
+  def get_queryset(self):
+    queryset = Recipe.objects.all()
+    return teamFilter(queryset, self)
 
 # this takes in a product to define a recipe in, the recipe batch size, and a list of products used as ingredients and their amounts
 # request data:
@@ -99,6 +117,10 @@ class IngredientList(generics.ListCreateAPIView):
   queryset = Ingredient.objects.all()
   serializer_class = IngredientSerializer
 
+  def get_queryset(self):
+    queryset = Ingredient.objects.all()
+    return teamFilter(queryset, self)
+
 class IngredientDetail(generics.RetrieveUpdateDestroyAPIView):
   queryset = Ingredient.objects.all()
   serializer_class = IngredientSerializer
@@ -114,7 +136,7 @@ class BatchList(generics.ListCreateAPIView):
     status = self.request.query_params.get('status', None)
     if status is not None:
       queryset = queryset.filter(status=status)
-
+    queryset = teamFilter(queryset, self)
     return queryset
 
 
