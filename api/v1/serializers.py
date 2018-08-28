@@ -100,7 +100,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
 	profile_id = serializers.CharField(source='id', read_only=True)
 	user_id = serializers.CharField(source='user.id', read_only=True)
 	username = serializers.CharField(source='user.username', read_only=True)
-	username_display = serializers.CharField(source='get_username_display', read_only=True)
 	first_name = serializers.CharField(source='user.first_name')
 	last_name = serializers.CharField(source='user.last_name')
 	shopify_access_token = serializers.CharField(source='team.shopify_access_token')
