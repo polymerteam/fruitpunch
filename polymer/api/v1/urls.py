@@ -8,6 +8,10 @@ urlpatterns = [
     url(r'^teams/$', views.TeamList.as_view()),
     url(r'^teams/(?P<pk>[0-9]+)/$', views.TeamGet.as_view()),
 
+    url(r'^users/create/$', views.UserProfileCreate.as_view()),
+    url(r'^userprofiles/$', views.UserProfileList.as_view()),
+    url(r'^userprofiles/(?P<pk>[0-9]+)/$', views.UserProfileDetail.as_view()),
+
     url(r'^products/$', views.ProductList.as_view()),
     url(r'^products/(?P<pk>[0-9]+)/$', views.ProductDetail.as_view()),
     url(r'^products/bulk/$', views.BulkProductCreate.as_view()),

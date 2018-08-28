@@ -16,6 +16,97 @@ class UserSerializer(serializers.ModelSerializer):
 		model = User
 		fields = ('id', 'username')
 
+class UserLoginSerializer(serializers.ModelSerializer):
+	team_name = serializers.CharField(source='userprofile.team.name')
+	team = serializers.CharField(source='userprofile.team.id', read_only=True)
+	account_type = serializers.CharField(source='userprofile.account_type', read_only=True)
+	profile_id = serializers.CharField(source='userprofile.id')
+	user_id = serializers.CharField(source='userprofile.user.id')
+	shopify_access_token = serializers.CharField(source='userprofile.team.shopify_access_token')
+	shopify_store_name = serializers.CharField(source='userprofile.team.shopify_store_name')
+
+	class Meta:
+		model = User
+		fields = ('user_id', 'profile_id', 'username', 'first_name', 'last_name', 'team', 'account_type', 'team_name', 'shopify_access_token', 'shopify_store_name')
+
+def sendEmail(userprofile_id):
+  userprofile = UserProfile.objects.get(pk=userprofile_id)
+  team_name = userprofile.team.name
+  email = userprofile.email
+
+  link = "https://asdf.asdf.com/join/" + str(userprofile_id) + "/"
+
+  subject = "You're invited to team " + team_name + " on Polymer!"
+  message = ""
+  html_message = "You have been invited to join team: <b>" + team_name + '</b> on Polymer. Click the link to accept your invitation and set your username/password. ' + link
+  try:
+    send_mail(
+        subject,
+        message,
+        'admin@polymerize.co',
+        [email],
+        fail_silently=False,
+        html_message=html_message,
+    )
+  except SMTPException as e:
+    print('send_mail failed: ', e)
+
+class UserProfileCreateSerializer(serializers.ModelSerializer):
+	username = serializers.CharField(source='user.username')
+	password = serializers.CharField(source='user.password')
+	first_name = serializers.CharField(source='user.first_name')
+	last_name = serializers.CharField(source='user.last_name')
+	team_name = serializers.CharField(source='team.name', read_only=True)
+	profile_id = serializers.CharField(source='id', read_only=True)
+
+	def create(self, validated_data):
+		team = validated_data['team']
+		data = validated_data['user']
+		long_username = data['username'].lower() + '_' + team.name
+
+		# create the user 
+		user = User.objects.create(username=long_username, first_name=data['first_name'], last_name=data['last_name'])
+		user.set_password(data.get('password'))
+		user.save()
+
+		# create the userprofile
+		account_type = validated_data.get('account_type', 'a')
+		email = validated_data.get('email', '')
+		invited = validated_data.get('invited', False)
+
+		userprofile = UserProfile.objects.create(
+			user=user,
+			team=team,
+			account_type=account_type,
+			email=email,
+		)
+
+		if invited:
+			sendEmail(userprofile.id)
+
+		return userprofile
+
+	class Meta:
+		model = UserProfile
+		extra_kwargs = {'account_type': {'write_only': True}, 'password': {'write_only': True}, 'invited': {'write_only': True}}
+		fields = ('id', 'profile_id', 'username', 'password', 'first_name', 'last_name', 'team', 'account_type', 'team_name', 'email')
+
+
+class UserProfileSerializer(serializers.ModelSerializer):
+	team_name = serializers.CharField(source='team.name', read_only=True)
+	team = serializers.CharField(source='team.id', read_only=True)
+	profile_id = serializers.CharField(source='id', read_only=True)
+	user_id = serializers.CharField(source='user.id', read_only=True)
+	username = serializers.CharField(source='user.username', read_only=True)
+	username_display = serializers.CharField(source='get_username_display', read_only=True)
+	first_name = serializers.CharField(source='user.first_name')
+	last_name = serializers.CharField(source='user.last_name')
+
+	class Meta:
+		model = UserProfile
+		fields = ('user_id', 'id', 'profile_id', 'username', 'username_display', 'first_name', 'last_name', 'team', 'account_type', 'team_name', 'email')
+
+
 class TeamSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = Team

@@ -8,6 +8,22 @@ class Team(models.Model):
 	shopify_access_token = models.TextField(null=True)
 	shopify_store_name = models.CharField(max_length=50, null=True)
 
+
+class UserProfile(models.Model):
+	USERTYPES = (
+		('a', 'admin'),
+		('w', 'worker'),
+	)
+
+	user = models.OneToOneField(User, on_delete=models.CASCADE)
+	team = models.ForeignKey(Team, related_name='userprofiles', on_delete=models.CASCADE, null=True)
+	account_type = models.CharField(max_length=1, choices=USERTYPES, default='a')
+	email = models.TextField(null=True)
+
+	def get_username_display(self):
+		username_pieces = self.user.username.rsplit('_', 1)
+		return username_pieces[0]
+
 class Product(models.Model):
 	# team = models.ForeignKey(Team, related_name='products', on_delete=models.CASCADE)
 	name = models.CharField(max_length=50)
