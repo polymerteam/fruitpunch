@@ -102,7 +102,7 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': 'polymer', #os.environ.get("WAFFLE_DB_NAME", ''),
-        'USER': 'maya', #os.environ.get("WAFFLE_DB_USER", ''),
+        'USER': 'ishita', #os.environ.get("WAFFLE_DB_USER", ''),
         'PASSWORD': '', #os.environ.get("WAFFLE_DB_PASSWORD", ''),
         'HOST': 'localhost', #os.environ.get("WAFFLE_DB_HOST", ''),
         'PORT': '5432', #os.environ.get("WAFFLE_DB_PORT", ''),
@@ -178,6 +178,8 @@ CORS_ALLOW_HEADERS = default_headers + (
     'process-data',
     'processData'
 )
+
+django_heroku.settings(locals())
 
 
 # CSRF_TRUSTED_ORIGINS = os.environ.get("WAFFLE_CORS_ORIGIN_WHITELIST", '').split(' ')
