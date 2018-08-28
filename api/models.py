@@ -107,25 +107,3 @@ class LineItem(models.Model):
 	# and then instead of num_units we just straight up have amount?
 	product = models.ForeignKey(Product, related_name='line_items', on_delete=models.CASCADE, null=True)
 	amount = models.DecimalField(max_digits=10, decimal_places=3, null=True)
-
-
-# class UserProfile(models.Model):
-# 	USERTYPES = (
-# 		('a', 'admin'),
-# 		('w', 'worker'),
-# 	)
-
-# 	user = models.OneToOneField(User, on_delete=models.CASCADE)
-# 	gauth_access_token = models.TextField(null=True)
-# 	gauth_refresh_token = models.TextField(null=True)
-# 	token_type = models.CharField(max_length=100, null=True) 
-# 	expires_in = models.IntegerField(null=True)
-# 	expires_at = models.FloatField(null=True)
-# 	gauth_email = models.TextField(null=True)
-# 	email = models.TextField(null=True)
-# 	team = models.ForeignKey(Team, related_name='userprofiles', on_delete=models.CASCADE, null=True)
-# 	account_type = models.CharField(max_length=1, choices=USERTYPES, default='a')
-# 	send_emails = models.BooleanField(default=True)
-# 	last_seen = models.DateTimeField(default=timezone.now)
-# 	walkthrough = models.IntegerField(default=1)
-

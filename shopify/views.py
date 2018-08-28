@@ -47,9 +47,6 @@ def createShopifyAuthURL(request):
 # @csrf_exempt
 @api_view(['POST'])
 def createShopifyAuthToken(request):
-	# shop_name = request.data['shopname']
-	# shop_name = 'polymerstore'
-
 	auth_response = request.data['auth_response']
 	code_str = auth_response.split("code=",1)[1]
 	code = code_str.split("&",1)[0]
@@ -75,7 +72,7 @@ def createShopifyAuthToken(request):
 	team.save()
   # save the token to the user
   # success response
-	response = HttpResponse(json.dumps({"token": token['access_token']}), content_type="text/plain")
+	response = HttpResponse(json.dumps({"token": token['access_token']}), content_type="application/json")
 	return response;
 
 
