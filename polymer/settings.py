@@ -109,6 +109,8 @@ DATABASES = {
         'PORT': '5432', #os.environ.get("WAFFLE_DB_PORT", ''),
     }
 }
+# db_from_env = dj_database_url.config(conn_max_age=500, require_ssl=True)
+# DATABASES['default'].update(db_from_env)
 
 REST_FRAMEWORK = {
     'DEFAULT_FILTER_BACKENDS': (
