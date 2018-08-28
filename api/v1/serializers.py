@@ -24,10 +24,11 @@ class UserLoginSerializer(serializers.ModelSerializer):
 	user_id = serializers.CharField(source='userprofile.user.id')
 	shopify_access_token = serializers.CharField(source='userprofile.team.shopify_access_token')
 	shopify_store_name = serializers.CharField(source='userprofile.team.shopify_store_name')
+	username_display = serializers.CharField(source='userprofile.get_username_display')
 
 	class Meta:
 		model = User
-		fields = ('user_id', 'profile_id', 'username', 'first_name', 'last_name', 'team', 'account_type', 'team_name', 'shopify_access_token', 'shopify_store_name')
+		fields = ('user_id', 'profile_id', 'username', 'first_name', 'last_name', 'team', 'account_type', 'team_name', 'shopify_access_token', 'shopify_store_name', 'username_display')
 
 def sendEmail(userprofile_id):
   userprofile = UserProfile.objects.get(pk=userprofile_id)
@@ -58,6 +59,7 @@ class UserProfileCreateSerializer(serializers.ModelSerializer):
 	last_name = serializers.CharField(source='user.last_name')
 	team_name = serializers.CharField(source='team.name', read_only=True)
 	profile_id = serializers.CharField(source='id', read_only=True)
+	username_display = serializers.CharField(source='get_username_display', read_only=True)
 
 	def create(self, validated_data):
 		team = validated_data['team']
@@ -89,7 +91,7 @@ class UserProfileCreateSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = UserProfile
 		extra_kwargs = {'account_type': {'write_only': True}, 'password': {'write_only': True}, 'invited': {'write_only': True}}
-		fields = ('id', 'profile_id', 'username', 'password', 'first_name', 'last_name', 'team', 'account_type', 'team_name', 'email')
+		fields = ('id', 'profile_id', 'username', 'password', 'first_name', 'last_name', 'team', 'account_type', 'team_name', 'email', 'username_display')
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
@@ -101,11 +103,12 @@ class UserProfileSerializer(serializers.ModelSerializer):
 	username_display = serializers.CharField(source='get_username_display', read_only=True)
 	first_name = serializers.CharField(source='user.first_name')
 	last_name = serializers.CharField(source='user.last_name')
-	shopify_access_token = serializers.CharField(source='userprofile.team.shopify_access_token')
+	shopify_access_token = serializers.CharField(source='team.shopify_access_token')
+	username_display = serializers.CharField(source='get_username_display', read_only=True)
 
 	class Meta:
 		model = UserProfile
-		fields = ('user_id', 'id', 'profile_id', 'username', 'username_display', 'first_name', 'last_name', 'team', 'account_type', 'team_name', 'email', 'shopify_access_token')
+		fields = ('user_id', 'id', 'profile_id', 'username', 'username_display', 'first_name', 'last_name', 'team', 'account_type', 'team_name', 'email', 'shopify_access_token', 'username_display')
 
 
 class TeamSerializer(serializers.ModelSerializer):
