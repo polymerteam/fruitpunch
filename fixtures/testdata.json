@@ -15,7 +15,8 @@
       "name": "Strawberries",
       "code": "STRW",
       "icon": "",
-      "unit": "pounds"
+      "unit": "pounds",
+      "team": 1
     }
   },
   {
@@ -25,7 +26,8 @@
       "name": "Sugar",
       "code": "SUG",
       "icon": "",
-      "unit": "kilograms"
+      "unit": "kilograms",
+      "team": 1
     }
   },
   {
@@ -35,7 +37,8 @@
       "name": "Corn Syrup",
       "code": "CSYP",
       "icon": "",
-      "unit": "ounces"
+      "unit": "ounces",
+      "team": 1
     }
   },
   {
@@ -45,7 +48,8 @@
       "name": "Lemon Juice",
       "code": "LEMJ",
       "icon": "",
-      "unit": "ounces"
+      "unit": "ounces",
+      "team": 1
     }
   },
   {
@@ -55,7 +59,8 @@
       "name": "Lemon Zest",
       "code": "LEMZ",
       "icon": "",
-      "unit": "grams"
+      "unit": "grams",
+      "team": 1
     }
   },
   {
@@ -65,7 +70,8 @@
       "name": "Salt",
       "code": "SLT",
       "icon": "",
-      "unit": "kilograms"
+      "unit": "kilograms",
+      "team": 1
     }
   },
   {
@@ -75,7 +81,8 @@
       "name": "Oranges",
       "code": "ORNG",
       "icon": "",
-      "unit": "pounds"
+      "unit": "pounds",
+      "team": 1
     }
   },
   {
@@ -85,7 +92,8 @@
       "name": "Egg Yolks",
       "code": "EGGY",
       "icon": "",
-      "unit": "grams"
+      "unit": "grams",
+      "team": 1
     }
   },
   {
@@ -95,7 +103,8 @@
       "name": "Unsalted Butter",
       "code": "UNBUT",
       "icon": "",
-      "unit": "ounces"
+      "unit": "ounces",
+      "team": 1
     }
   },
   {
@@ -105,7 +114,8 @@
       "name": "Lemon curd",
       "code": "LCRD",
       "icon": "",
-      "unit": "ounces"
+      "unit": "ounces",
+      "team": 1
     }
   },
   {
@@ -115,7 +125,8 @@
       "name": "Orange marmalade",
       "code": "OMARM",
       "icon": "",
-      "unit": "ounces"
+      "unit": "ounces",
+      "team": 1
     }
   },
   {
@@ -125,7 +136,8 @@
       "name": "Strawberry syrup",
       "code": "SSYP",
       "icon": "",
-      "unit": "ounces"
+      "unit": "ounces",
+      "team": 1
     }
   },
   {

@@ -25,7 +25,7 @@ class UserProfile(models.Model):
 		return username_pieces[0]
 
 class Product(models.Model):
-	# team = models.ForeignKey(Team, related_name='products', on_delete=models.CASCADE)
+	team = models.ForeignKey(Team, related_name='products', on_delete=models.CASCADE)
 	name = models.CharField(max_length=50)
 	code = models.CharField(max_length=20)
 	icon = models.CharField(max_length=50)
@@ -34,7 +34,7 @@ class Product(models.Model):
 	is_trashed = models.BooleanField(default=False, db_index=True)
 
 class ShopifySKU(models.Model):
-	# team = models.ForeignKey(Team, related_name='shopify_skus', on_delete=models.CASCADE)
+	team = models.ForeignKey(Team, related_name='shopify_skus', on_delete=models.CASCADE)
 	name = models.CharField(max_length=300)
 	variant_id = models.CharField(max_length=50, unique=True)
 	variant_sku = models.CharField(max_length=100, null=True)
@@ -44,21 +44,18 @@ class ShopifySKU(models.Model):
 
 
 class Recipe(models.Model):
-	# team = models.ForeignKey(Team, related_name='recipes', on_delete=models.CASCADE)
 	product = models.ForeignKey(Product, related_name='recipes', on_delete=models.CASCADE)
 	default_batch_size = models.DecimalField(default=1, max_digits=10, decimal_places=3)
 	is_trashed = models.BooleanField(default=False, db_index=True)
 	created_at = models.DateTimeField(default=timezone.now, blank=True)
 
 class Ingredient(models.Model):
-	# team = models.ForeignKey(Team, related_name='ingredients', on_delete=models.CASCADE)
 	recipe = models.ForeignKey(Recipe, related_name="ingredients", on_delete=models.CASCADE)
 	product = models.ForeignKey(Product, related_name="ingredients", on_delete=models.CASCADE)
 	amount = models.DecimalField(default=1, max_digits=10, decimal_places=3)
 	is_trashed = models.BooleanField(default=False, db_index=True)
 
 class Batch(models.Model):
-	# team = models.ForeignKey(Team, related_name='batches', on_delete=models.CASCADE)
 	STATUSES = (
 		('i', 'in progress'),
 		('c', 'completed')
@@ -76,7 +73,6 @@ class Batch(models.Model):
 
 # can you receive negative inventory??
 class ReceivedInventory(models.Model):
-	# team = models.ForeignKey(Team, related_name='received_inventory', on_delete=models.CASCADE)
 	product = models.ForeignKey(Product, related_name='received_inventory', on_delete=models.CASCADE)
 	amount = models.DecimalField(default=1, max_digits=10, decimal_places=3)
 	received_at = models.DateTimeField(default=timezone.now, blank=True)
@@ -85,6 +81,7 @@ class ReceivedInventory(models.Model):
 
 
 class Order(models.Model):
+	team = models.ForeignKey(Team, related_name='orders', on_delete=models.CASCADE)
 	STATUSES = (
 		('i', 'in progress'),
 		('c', 'completed'),

@@ -25,6 +25,8 @@ def teamFilter(queryset, self):
   team = self.request.query_params.get('team', None)
   if team is not None:
     return queryset.filter(team=team)
+  else:
+    return queryset
 
 class UserList(generics.ListAPIView):
   queryset = User.objects.all()
@@ -98,7 +100,10 @@ class RecipeList(generics.ListCreateAPIView):
 
   def get_queryset(self):
     queryset = Recipe.objects.all()
-    return teamFilter(queryset, self)
+    team = self.request.query_params.get('team', None)
+    if team is not None:
+      queryset = queryset.filter(product__team=team)
+    return queryset
 
 # this takes in a product to define a recipe in, the recipe batch size, and a list of products used as ingredients and their amounts
 # request data:
@@ -118,8 +123,11 @@ class IngredientList(generics.ListCreateAPIView):
   serializer_class = IngredientSerializer
 
   def get_queryset(self):
+    team = self.request.query_params.get('team', None)
     queryset = Ingredient.objects.all()
-    return teamFilter(queryset, self)
+    if team is not None:
+      queryset = queryset.filter(product__team=team)
+    return queryset
 
 class IngredientDetail(generics.RetrieveUpdateDestroyAPIView):
   queryset = Ingredient.objects.all()
@@ -130,13 +138,15 @@ class BatchList(generics.ListCreateAPIView):
   serializer_class = BatchSerializer
 
   def get_queryset(self):
+    team = self.request.query_params.get('team', None)
     queryset = Batch.objects.all()
 
     # filter by status (i = in progress, c = completed)
     status = self.request.query_params.get('status', None)
     if status is not None:
       queryset = queryset.filter(status=status)
-    queryset = teamFilter(queryset, self)
+    if team is not None:
+      queryset = queryset.filter(product__team=team)
     return queryset
 
 
@@ -167,17 +177,12 @@ class InventoryList(generics.ListAPIView):
   serializer_class = InventorySerializer
 
   def get_queryset(self):
+    team = self.request.query_params.get('team', None)
+    if team is None:
+      # raise error
+      return
 
-    # amount_used = Batch.objects.filter(is_trashed=False, status='c')\
-    #     .annotate(ingredient_amount=Sum('active_recipe__ingredients__amount', filter=Q(active_recipe__ingredients__product=OuterRef('pk'))))\
-    #     .annotate(recipe_batch_size=F('active_recipe__default_batch_size'))\
-    #     .annotate(amt_in_batch=F('amount')*F('ingredient_amount')/F('recipe_batch_size'))\
-    #     .order_by().values('amt_in_batch')
-
-    # total_amount_used = amount_used.annotate(total=Sum('amt_in_batch')).values('total')
-
-    queryset = annotateProductWithInventory(Product.objects.all())
-    # queryset = queryset.annotate(asdf=Subquery(total_amount_used))
+    queryset = annotateProductWithInventory(Product.objects.filter(team=team))
     # TODO: we also need to get all the batches which have no active recipe that match this product and subtracted those that are completed
 
     results = []
@@ -190,9 +195,6 @@ class InventoryList(generics.ListAPIView):
 
     return results
 
-
-# >>> newest = Comment.objects.filter(post=OuterRef('pk')).order_by('-created_at')
-# >>> Post.objects.annotate(newest_commenter_email=Subquery(newest.values('email')[:1]))
 
 
 class BulkProductCreate(generics.CreateAPIView):
@@ -228,6 +230,13 @@ class ReceivedInventoryList(generics.ListCreateAPIView):
                             headers=headers)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+  def get_queryset(self):
+    team = self.request.query_params.get('team', None)
+    queryset = ReceivedInventory.objects.all()
+    if team is not None:
+      queryset = queryset.filter(product__team=team)
+    return queryset
+
 class ReceivedInventoryDetail(generics.RetrieveUpdateDestroyAPIView):
   queryset = ReceivedInventory.objects.all()
   serializer_class = ReceivedInventorySerializer
@@ -246,7 +255,7 @@ class OrderList(generics.ListCreateAPIView):
       queryset = queryset.filter(status=status)
     if channel is not None:
       queryset = queryset.filter(channel=channel)
-
+    queryset = teamFilter(queryset, self)
 
     return queryset
 
@@ -272,10 +281,12 @@ class OrderCreateWithLineItems(generics.ListCreateAPIView):
 
 @api_view(['GET'])
 def getIngredientsForBatches(request):
-  batches = Batch.objects.filter(status='i')
+  team_id = request.query_params.get('team')
+  team = Team.objects.get(pk=team_id)
+  # batches = Batch.objects.filter(status='i', product__team=team)
   ingredient_amount_map = {}
 
-  b = Batch.objects.filter(status='i')\
+  b = Batch.objects.filter(status='i', product__team=team)\
     .annotate(ingredients_list=ArrayAgg(Concat(F('active_recipe__ingredients__product__id'), 
       Value('|'), 
       ExpressionWrapper(F('amount')*F('active_recipe__ingredients__amount')/F('active_recipe__default_batch_size'), output_field=DecimalField()), 
@@ -304,12 +315,3 @@ def getIngredientsForBatches(request):
   serializer = IngredientAmountSerializer(ing_list, many=True)
   return Response(serializer.data)
 
-
-# class UserProfileList(generics.ListAPIView):
-#   queryset = UserProfile.objects.all()
-#   serializer_class = UserProfileSerializer
-
-# # userprofiles/[pk]/
-# class UserProfileGet(generics.RetrieveAPIView):
-#   queryset = UserProfile.objects.all()
-#   serializer_class = UserProfileSerializer
