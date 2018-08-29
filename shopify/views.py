@@ -21,7 +21,7 @@ from django.contrib.postgres.aggregates.general import ArrayAgg
 
 
 SHOPIFY_SCOPE = 'read_all_orders,read_orders,write_orders,read_products,read_customers'
-REDIRECT_URI = 'https://localhost:3000/shopify/ext'
+REDIRECT_URI = settings.REDIRECT_URI
 
 # @csrf_exempt
 @api_view(['POST'])

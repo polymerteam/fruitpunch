@@ -34,7 +34,7 @@ ALLOWED_HOSTS = ['*']
 
 SHOPIFY_API_KEY = os.environ.get("SHOPIFY_API_KEY")
 SHOPIFY_SECRET_KEY = os.environ.get("SHOPIFY_SECRET_KEY")
-
+REDIRECT_URI = os.environ.get("REDIRECT_URI")
 
 EMAIL_USE_TLS = True
 EMAIL_HOST = 'smtp.gmail.com'
