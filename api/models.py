@@ -25,9 +25,14 @@ class UserProfile(models.Model):
 		return username_pieces[0]
 
 class Product(models.Model):
+	PRODUCT_TYPES = (
+		('rm', 'raw materials'),
+		('fg', 'finished goods'),
+	)
 	team = models.ForeignKey(Team, related_name='products', on_delete=models.CASCADE)
 	name = models.CharField(max_length=50)
-	code = models.CharField(max_length=20)
+	# code = models.CharField(max_length=20)
+	category = models.CharField(max_length=2, choices=PRODUCT_TYPES, default='rm')
 	icon = models.CharField(max_length=50)
 	created_at = models.DateTimeField(default=timezone.now, blank=True)
 	unit = models.CharField(max_length=20, default="kilogram")
@@ -78,6 +83,7 @@ class ReceivedInventory(models.Model):
 	received_at = models.DateTimeField(default=timezone.now, blank=True)
 	is_trashed = models.BooleanField(default=False, db_index=True)
 	dollar_value = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+	message = models.CharField(max_length=200, blank=True, default="Received Inventory")
 
 
 class Order(models.Model):
@@ -92,6 +98,7 @@ class Order(models.Model):
 	number = models.IntegerField(null=True, db_index=True)
 	channel = models.CharField(max_length=20, default='manual')
 	created_at = models.DateTimeField(blank=True, null=True)
+	# change created at to placed on
 	due_date = models.DateTimeField(blank=True, null=True)
 	url = models.CharField(max_length=200, blank=True, null=True)
 	customer = models.CharField(max_length=150, blank=True, null=True)

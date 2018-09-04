@@ -115,14 +115,30 @@ class TeamSerializer(serializers.ModelSerializer):
 		model = Team
 		fields = ('id', 'name', 'shopify_store_name', 'shopify_access_token')
 
+
+class ShopifySKUBasicSerializer(serializers.ModelSerializer):
+	class Meta:
+		model = ShopifySKU
+		fields = ('id', 'name', 'variant_id', 'variant_sku', 'product_id', 'conversion_factor', 'team')
+
+
 class ProductSerializer(serializers.ModelSerializer):
+	shopify_sku = serializers.SerializerMethodField(read_only=True)
+
+	def get_shopify_sku(self, product):
+		matching_skus = ShopifySKU.objects.filter(product=product)
+		if matching_skus.count() > 0:
+			return ShopifySKUBasicSerializer(matching_skus.first()).data
+		else:
+			return None
+
 	def __init__(self, *args, **kwargs):
 		many = kwargs.pop('many', False)
 		super(ProductSerializer, self).__init__(many=many, *args, **kwargs)
 
 	class Meta:
 		model = Product
-		fields = ('id', 'name', 'code', 'icon', 'unit', 'is_trashed', 'created_at', 'team')
+		fields = ('id', 'name', 'category', 'icon', 'unit', 'is_trashed', 'created_at', 'team', 'shopify_sku')
 
 class ShopifySKUSerializer(serializers.ModelSerializer):
 	product = ProductSerializer(read_only=True)
@@ -201,17 +217,32 @@ class BatchSerializer(serializers.ModelSerializer):
 class InventorySerializer(serializers.ModelSerializer):
 	in_progress_amount = serializers.DecimalField(max_digits=10, decimal_places=3)
 	available_amount = serializers.DecimalField(max_digits=10, decimal_places=3)
-	# completed_amount = serializers.DecimalField(max_digits=10, decimal_places=3)
-	# received_amount = serializers.DecimalField(max_digits=10, decimal_places=3)
 	product = serializers.SerializerMethodField()
+	shopify_available_amount = serializers.SerializerMethodField()
+	shopify_in_progress_amount = serializers.SerializerMethodField()
 
 	def get_product(self, product):
 		return ProductSerializer(Product.objects.get(pk=product['id'])).data
 
+	def get_shopify_available_amount(self, product):
+		p = Product.objects.get(pk=product['id'])
+		matching_shopify_skus = p.shopify_skus
+		if matching_shopify_skus.count() > 0:
+			return product['available_amount'] / matching_shopify_skus.first().conversion_factor 
+		else:
+			return None
+
+	def get_shopify_in_progress_amount(self, product):
+		p = Product.objects.get(pk=product['id'])
+		matching_shopify_skus = p.shopify_skus
+		if matching_shopify_skus.count() > 0:
+			return product['in_progress_amount'] / matching_shopify_skus.first().conversion_factor 
+		else:
+			return None
+
 	class Meta:
 		model = Product
-		fields = ('id', 'product', 'in_progress_amount', 'available_amount')
-		# fields = ('id', 'product', 'in_progress_amount', 'completed_amount', 'received_amount')
+		fields = ('id', 'product', 'in_progress_amount', 'available_amount', 'shopify_available_amount', 'shopify_in_progress_amount')
 
 
 class ReceivedInventorySerializer(serializers.ModelSerializer):
@@ -224,7 +255,7 @@ class ReceivedInventorySerializer(serializers.ModelSerializer):
 
 	class Meta:
 		model = ReceivedInventory
-		fields = ('id', 'product', 'product_id', 'amount', 'dollar_value', 'received_at', 'is_trashed')
+		fields = ('id', 'product', 'product_id', 'amount', 'dollar_value', 'received_at', 'is_trashed', 'message')
 
 
 class LineItemSerializer(serializers.ModelSerializer):
@@ -284,5 +315,14 @@ class OrderCreateWithLineItemsSerializer(serializers.ModelSerializer):
 		fields = ('id', 'status', 'name', 'number', 'channel', 'created_at', 'due_date', 'url', 'line_items', 'line_items_data', 'team')
 
 
+class ProductHistorySerializer(serializers.Serializer):
+	product = serializers.SerializerMethodField()
+	timeline = serializers.SerializerMethodField()
 
+	def get_product(self, obj):
+		print(obj['product'])
+		return ProductSerializer(Product.objects.get(pk=int(obj['product']))).data
+
+	def get_timeline(self, obj):
+		return obj['timeline'] or []
 

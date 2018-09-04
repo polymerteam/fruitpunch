@@ -74,6 +74,9 @@ class ProductList(generics.ListCreateAPIView):
 
   def get_queryset(self):
     queryset = Product.objects.all()
+    category = self.request.query_params.get('category', None)
+    if category is not None:
+      queryset = queryset.filter(category=category)
     return teamFilter(queryset, self)
 
 class ProductDetail(generics.RetrieveUpdateDestroyAPIView):
@@ -196,6 +199,68 @@ class InventoryList(generics.ListAPIView):
     return results
 
 
+class ProductHistory(generics.ListAPIView):
+  serializer_class = ProductHistorySerializer
+
+  def get_queryset(self):
+    team = self.request.query_params.get('team', None)
+    product = self.request.query_params.get('product', None)
+    if team is None:
+      # raise error
+      return
+    if product is None:
+      # raise error?? or what does this look like for all products???
+      return
+
+    timeline = []
+    
+    # get all the finished batches for creating this product in order
+    # TODO: change to completed_at
+    created_amounts = Batch.objects.filter(product__team=team, product=product, status='c').order_by('started_at').values_list('started_at', 'amount')
+    for obj in created_amounts:
+      timeline.append({'date': obj[0], 'amount': obj[1], 'message': "created"})
+    # get all the received/adjusted inventory for this product in order
+    received_or_adjusted_amounts = ReceivedInventory.objects.filter(product=product).order_by('received_at').values_list('received_at', 'amount', 'message')
+    for obj in received_or_adjusted_amounts:
+      timeline.append({'date': obj[0], 'amount': obj[1], 'message': obj[2]})
+
+    # get all the batches for using this product in order
+    used_amounts = Batch.objects.filter(is_trashed=False, status='c')\
+      .annotate(ingredient_amount=Sum('active_recipe__ingredients__amount', filter=Q(active_recipe__ingredients__product=product)))\
+      .annotate(recipe_batch_size=F('active_recipe__default_batch_size'))\
+      .annotate(amt_in_batch=F('amount')*F('ingredient_amount')/F('recipe_batch_size'))\
+      .values_list('started_at', 'amt_in_batch')
+      # TODO: change to completed_at instead of started_at
+    for obj in used_amounts:
+      if obj[1] != None:
+        timeline.append({'date': obj[0], 'amount': obj[1], 'message': 'used as an ingredient'})
+
+    # get all the currently ongoing batches for this product and get the total amount for that
+    ongoing_amount = Batch.objects.filter(product=product, status='i').aggregate(Sum('amount'))['amount__sum']
+    if ongoing_amount != None:
+      timeline.append({'date': datetime.datetime.now(), 'amount': ongoing_amount, 'message': 'currently in progress being created'})
+
+    # get all the currently ongoing batches that are using this product as a ingredient
+    currently_in_use = Batch.objects.filter(is_trashed=False, status='i')\
+      .annotate(ingredient_amount=Sum('active_recipe__ingredients__amount', filter=Q(active_recipe__ingredients__product=product)))\
+      .annotate(recipe_batch_size=F('active_recipe__default_batch_size'))\
+      .annotate(amt_in_batch=F('amount')*F('ingredient_amount')/F('recipe_batch_size'))\
+      .aggregate(Sum('amt_in_batch'))['amt_in_batch__sum']
+
+    if currently_in_use != None:
+      timeline.append({'date': datetime.datetime.now(), 'amount': currently_in_use, 'message': 'currently in progress being used'})
+
+
+    timeline.sort(key=lambda x: convert_date(x['date']), reverse=True)
+
+    return [{'product': product, 'timeline': timeline}]
+
+def convert_date(d):
+  utc=pytz.UTC
+  if d.tzinfo is None or d.tzinfo.utcoffset(d) is None:
+    return utc.localize(d)
+  else:
+    return d
 
 class BulkProductCreate(generics.CreateAPIView):
   queryset = Product.objects.all()
