@@ -312,7 +312,7 @@ class OrderCreateWithLineItemsSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = Order
 		extra_kwargs = {'line_items_data': {'write_only': True}}
-		fields = ('id', 'status', 'name', 'number', 'channel', 'created_at', 'due_date', 'url', 'line_items', 'line_items_data', 'team')
+		fields = ('id', 'status', 'name', 'number', 'channel', 'created_at', 'due_date', 'url', 'line_items', 'line_items_data', 'team', 'customer')
 
 
 class ProductHistorySerializer(serializers.Serializer):
