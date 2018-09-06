@@ -245,7 +245,7 @@ class InventorySerializer(serializers.ModelSerializer):
 	shopify_in_progress_amount = serializers.SerializerMethodField()
 
 	def get_product(self, product):
-		return ProductSerializer(Product.objects.get(pk=product['id'])).data
+		return ProductDetailSerializer(Product.objects.get(pk=product['id'])).data
 
 	def get_shopify_available_amount(self, product):
 		p = Product.objects.get(pk=product['id'])
