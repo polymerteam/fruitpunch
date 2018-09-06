@@ -81,7 +81,7 @@ class ProductList(generics.ListCreateAPIView):
 
 class ProductDetail(generics.RetrieveUpdateDestroyAPIView):
   queryset = Product.objects.all()
-  serializer_class = ProductSerializer
+  serializer_class = ProductDetailSerializer
 
 
 class ShopifySKUList(generics.ListCreateAPIView):

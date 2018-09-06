@@ -166,6 +166,29 @@ class RecipeSerializer(serializers.ModelSerializer):
 		model = Recipe
 		fields = ('id', 'product', 'product_id', 'default_batch_size', 'is_trashed', 'created_at', 'ingredients')
 
+
+class ProductDetailSerializer(serializers.ModelSerializer):
+	shopify_sku = serializers.SerializerMethodField(read_only=True)
+	recipe = serializers.SerializerMethodField(read_only=True)
+
+	def get_shopify_sku(self, product):
+		matching_skus = ShopifySKU.objects.filter(product=product)
+		if matching_skus.count() > 0:
+			return ShopifySKUBasicSerializer(matching_skus.first()).data
+		else:
+			return None
+
+	def get_recipe(self, product):
+		matching_recipes = Recipe.objects.filter(product=product, is_trashed=False).order_by('-created_at')
+		if matching_recipes.count() > 0:
+			return RecipeSerializer(matching_recipes.first()).data
+		else:
+			return None
+
+	class Meta:
+		model = Product
+		fields = ('id', 'name', 'category', 'icon', 'unit', 'is_trashed', 'created_at', 'team', 'shopify_sku', 'recipe')
+
 class RecipeCreateWithIngredientsSerializer(serializers.ModelSerializer):
 	product = ProductSerializer(read_only=True)
 	product_id = serializers.PrimaryKeyRelatedField(source='product', queryset=Product.objects.all(), write_only=True)
