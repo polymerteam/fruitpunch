@@ -320,7 +320,6 @@ class ProductHistorySerializer(serializers.Serializer):
 	timeline = serializers.SerializerMethodField()
 
 	def get_product(self, obj):
-		print(obj['product'])
 		return ProductSerializer(Product.objects.get(pk=int(obj['product']))).data
 
 	def get_timeline(self, obj):
