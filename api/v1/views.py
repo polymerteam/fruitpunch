@@ -268,6 +268,9 @@ class BulkProductCreate(generics.CreateAPIView):
 
   def create(self, request, *args, **kwargs):
     product_list = request.data['products']
+    team = request.data['team']
+    for product in product_list:
+      product['team'] = int(team)
     serializer = self.get_serializer(data=product_list, many=True)
     if serializer.is_valid():
       serializer.save()
