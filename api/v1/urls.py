@@ -37,6 +37,7 @@ urlpatterns = [
     url(r'^received/(?P<pk>[0-9]+)/$', views.ReceivedInventoryDetail.as_view()),
 
     url(r'^orders/$', views.OrderList.as_view()),
+    url(r'^orders-by-product/$', views.OrderByProductList.as_view()),
     url(r'^orders/(?P<pk>[0-9]+)/$', views.OrderDetail.as_view()),
     url(r'^orders/create-with-items/$', views.OrderCreateWithLineItems.as_view()),
 

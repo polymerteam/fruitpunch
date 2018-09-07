@@ -43,7 +43,7 @@ class TeamList(generics.ListCreateAPIView):
   serializer_class = TeamSerializer
 
 
-class TeamGet(generics.RetrieveAPIView):
+class TeamGet(generics.RetrieveUpdateAPIView):
   queryset = Team.objects.all()
   serializer_class = TeamSerializer
 
@@ -320,9 +320,65 @@ class OrderList(generics.ListCreateAPIView):
       queryset = queryset.filter(status=status)
     if channel is not None:
       queryset = queryset.filter(channel=channel)
+
     queryset = teamFilter(queryset, self)
 
     return queryset
+
+
+
+
+class OrderByProductList(generics.ListAPIView):
+  queryset = Order.objects.all()
+  serializer_class = ShopifyOrderSerializer
+
+  def get_queryset(self):
+    queryset = Order.objects.all()
+
+    status = self.request.query_params.get('status', None)
+    channel = self.request.query_params.get('channel', None)
+    if status is not None:
+      queryset = queryset.filter(status=status)
+    if channel is not None:
+      queryset = queryset.filter(channel=channel)
+
+    queryset = teamFilter(queryset, self)
+
+    order_map = {}
+    customer_map = {}
+    for order in queryset:
+      for line_item in order.line_items.all():
+        if line_item.product != None:
+          product_id = line_item.product.id
+          amount = line_item.amount
+        elif line_item.shopify_sku != None:
+          shopify_sku = line_item.shopify_sku
+          product_id = None
+          amount = None
+          if line_item.shopify_sku.product:
+            product_id = line_item.shopify_sku.product.id
+            amount = line_item.shopify_sku.conversion_factor * line_item.num_units
+        if product_id in order_map:
+          order_map[product_id] += amount
+        else:
+          order_map[product_id] = amount
+          customer_map[product_id] = []
+        if order.customer and order.customer != "":
+          customer_map[product_id].append(order.customer)
+
+    order_list = []
+    for obj in order_map:
+      order_list.append({'product_id': obj, 'total_amount': order_map[obj], 'customer_name_list': customer_map[obj]})
+
+    return order_list
+
+
+
+
+
+#     return queryset
+
+
 
 class OrderDetail(generics.RetrieveUpdateDestroyAPIView):
   queryset = Order.objects.all()

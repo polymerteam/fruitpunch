@@ -241,7 +241,11 @@ def shopifyOrdersByProductHelper(request):
 	team_id = request.query_params.get('team')
 	team = Team.objects.get(pk=team_id)
 	body = shopifyAPIHelper(request, "admin/orders.json")
-	shopify_orders = body['orders']
+	if 'orders' in body:
+		shopify_orders = body['orders']
+	else:
+		print(body)
+		return []
 	order_map = {}
 	customer_map = {}
 	for order in shopify_orders:
