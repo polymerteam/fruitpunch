@@ -184,8 +184,19 @@ class InventoryList(generics.ListAPIView):
     if team is None:
       # raise error
       return
+    queryset = Product.objects.filter(team=team)
 
-    queryset = annotateProductWithInventory(Product.objects.filter(team=team))
+    product_types = self.request.query_params.get('product_types')
+    if product_types is not None:
+      product_types = product_types.strip().split(',')
+      queryset = queryset.filter(id__in=product_types)
+
+    category_types = self.request.query_params.get('category_types')
+    if category_types is not None:
+      category_types = category_types.strip().split(',')
+      queryset = queryset.filter(category__in=category_types)
+
+    queryset = annotateProductWithInventory(queryset)
     # TODO: we also need to get all the batches which have no active recipe that match this product and subtracted those that are completed
 
     results = []
