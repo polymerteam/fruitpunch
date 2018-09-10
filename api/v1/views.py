@@ -8,7 +8,8 @@ from rest_framework.filters import OrderingFilter
 from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
 from api.paginations import *
-import datetime
+from api import constants
+from datetime import datetime
 from django.http import HttpResponse, HttpResponseForbidden
 import pytz
 import json
@@ -141,15 +142,30 @@ class BatchList(generics.ListCreateAPIView):
   serializer_class = BatchSerializer
 
   def get_queryset(self):
-    team = self.request.query_params.get('team', None)
     queryset = Batch.objects.all()
-
-    # filter by status (i = in progress, c = completed)
-    status = self.request.query_params.get('status', None)
-    if status is not None:
-      queryset = queryset.filter(status=status)
+    team = self.request.query_params.get('team', None)
     if team is not None:
       queryset = queryset.filter(product__team=team)
+
+    start = self.request.query_params.get('start', None)
+    end = self.request.query_params.get('end', None)
+    if start is not None and end is not None:
+      dt = datetime
+      start_date = pytz.utc.localize(dt.strptime(start, constants.DATE_FORMAT))
+      end_date = pytz.utc.localize(dt.strptime(end, constants.DATE_FORMAT))
+      queryset = queryset.filter(started_at__range=(start_date, end_date))
+
+    product_types = self.request.query_params.get('product_types')
+    if product_types is not None:
+      product_types = product_types.strip().split(',')
+      queryset = queryset.filter(product__in=product_types)
+
+    # filter by status (i = in progress, c = completed)
+    status_types = self.request.query_params.get('status_types', None)
+    if status_types is not None:
+      status_types = status_types.strip().split(',')
+      queryset = queryset.filter(status__in=status_types)
+
     return queryset
 
 
@@ -249,7 +265,7 @@ class ProductHistory(generics.ListAPIView):
     # get all the currently ongoing batches for this product and get the total amount for that
     ongoing_amount = Batch.objects.filter(product=product, status='i').aggregate(Sum('amount'))['amount__sum']
     if ongoing_amount != None:
-      timeline.append({'date': datetime.datetime.now(), 'amount': ongoing_amount, 'message': 'currently in progress being created'})
+      timeline.append({'date': datetime.now(), 'amount': ongoing_amount, 'message': 'currently in progress being created'})
 
     # get all the currently ongoing batches that are using this product as a ingredient
     currently_in_use = Batch.objects.filter(is_trashed=False, status='i')\
@@ -259,7 +275,7 @@ class ProductHistory(generics.ListAPIView):
       .aggregate(Sum('amt_in_batch'))['amt_in_batch__sum']
 
     if currently_in_use != None:
-      timeline.append({'date': datetime.datetime.now(), 'amount': currently_in_use, 'message': 'currently in progress being used'})
+      timeline.append({'date': datetime.now(), 'amount': currently_in_use, 'message': 'currently in progress being used'})
 
 
     timeline.sort(key=lambda x: convert_date(x['date']), reverse=True)
