@@ -42,6 +42,7 @@ urlpatterns = [
     url(r'^orders/create-with-items/$', views.OrderCreateWithLineItems.as_view()),
 
     url(r'^ingredients-in-batches/$', views.getIngredientsForBatches),
+    url(r'^ingredients-for-orders/$', views.getIngredientsForOrders),
 
     # create product and match sku endpoint - takes in a shopifysku id and information to create a new product
 

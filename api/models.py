@@ -85,7 +85,6 @@ class ReceivedInventory(models.Model):
 	dollar_value = models.DecimalField(max_digits=10, decimal_places=2, null=True)
 	message = models.CharField(max_length=200, blank=True, default="Received Inventory")
 
-
 class Order(models.Model):
 	team = models.ForeignKey(Team, related_name='orders', on_delete=models.CASCADE)
 	STATUSES = (
@@ -103,7 +102,6 @@ class Order(models.Model):
 	url = models.CharField(max_length=200, blank=True, null=True)
 	customer = models.CharField(max_length=150, blank=True, null=True)
 	# add in customer name
-
 
 class LineItem(models.Model):
 	order = models.ForeignKey(Order, related_name='line_items', on_delete=models.CASCADE)
