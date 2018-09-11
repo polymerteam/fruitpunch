@@ -7,7 +7,7 @@ class Team(models.Model):
 	name = models.CharField(max_length=50, unique=True)
 	shopify_access_token = models.TextField(null=True)
 	shopify_store_name = models.CharField(max_length=50, null=True)
-
+	squarespace_access_token = models.CharField(max_length = 100, null=True, blank=True)
 
 class UserProfile(models.Model):
 	USERTYPES = (
@@ -45,6 +45,7 @@ class ShopifySKU(models.Model):
 	variant_sku = models.CharField(max_length=100, null=True)
 	product = models.ForeignKey(Product, related_name='shopify_skus', on_delete=models.CASCADE, null=True)
 	conversion_factor = models.DecimalField(default=1, max_digits=10, decimal_places=6)
+	channel = models.CharField(max_length=20, default='shopify')
 	# CHANGE ShopifySKU to ExternalSKU and also include a row with the channel e.g. shopify
 
 

@@ -91,6 +91,9 @@ class ShopifySKUList(generics.ListCreateAPIView):
 
   def get_queryset(self):
     queryset = ShopifySKU.objects.all()
+    channel = self.request.query_params.get('channel', None)
+    if channel is not None:
+      queryset = queryset.filter(channel=channel)
     return teamFilter(queryset, self)
 
 class ShopifySKUDetail(generics.RetrieveUpdateDestroyAPIView):
@@ -508,6 +511,7 @@ def addProductAmountHelper(item, ingredient_amount_map):
 
 @api_view(['GET'])
 def getIngredientsForOrders(request):
+  # TODO - add a filter to get the ingredients for orders from a particular channel
   # get all the amounts required for each product from unfulfilled orders
   team_id = request.query_params.get('team')
   team = Team.objects.get(pk=team_id)

@@ -7,7 +7,7 @@ from api.models import *
 from api.v1.views import *
 # from api.v1.serializers import *
 from shopify.serializers import *
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseForbidden
 from requests_oauthlib import OAuth2Session, TokenUpdated
 from django.conf import settings
 from rest_framework.decorators import api_view
@@ -92,9 +92,9 @@ def getShopifyProducts(request):
 				variant_title = main_title + " - " + variant['title']
 			variant_id = variant['id']
 			variant_sku = variant['sku']
-			shopifysku = ShopifySKU.objects.filter(variant_id=variant_id, team=team)
+			shopifysku = ShopifySKU.objects.filter(variant_id=variant_id, team=team, channel='shopify')
 			if shopifysku.count() == 0:
-				ShopifySKU.objects.create(name=variant_title, variant_id=variant_id, variant_sku=variant_sku, team=team)
+				ShopifySKU.objects.create(name=variant_title, variant_id=variant_id, variant_sku=variant_sku, team=team, channel='shopify')
 			else:
 				sp = shopifysku.first()
 				was_updated = False
@@ -110,7 +110,7 @@ def getShopifyProducts(request):
 				if was_updated:
 					sp.save()
 	# filter by team
-	queryset = ShopifySKU.objects.all()
+	queryset = ShopifySKU.objects.filter(team=team, channel='shopify')
 	serializer = ShopifySKUSerializer(queryset, many=True)
 	return Response(serializer.data)
 
@@ -150,7 +150,7 @@ def getOrCreateOrder(orders, status, team):
 		for line_item in order['line_items']:
 			variant_id = line_item['variant_id']
 			quantity = line_item['quantity']
-			matching_sku = ShopifySKU.objects.filter(variant_id=variant_id, team=team).first()
+			matching_sku = ShopifySKU.objects.filter(variant_id=variant_id, team=team, channel='shopify').first()
 
 			new_li = LineItem.objects.get_or_create(order=new_order, shopify_sku=matching_sku, num_units=quantity)
 
@@ -209,6 +209,62 @@ def shopifyAPIHelper(request, url):
 	r1 = shopify.get(api_url, headers=extra_params)
 	body = json.loads(r1.content)
 	return body
+
+
+
+@api_view(['GET'])
+def loadSquarespaceOrdersIntoPolymer(request):
+	team_id = request.query_params.get('team')
+	team = Team.objects.get(pk=team_id)
+
+	# get all open orders
+	orders = squarespaceAPIHelper(request, "orders")
+	if orders == None:
+		serializer = OrderSerializer(Order.objects.none(), many=True)
+		return Response(serializer.data)
+	for order in orders:
+		number = order['orderNumber']
+		billing = order['billingAddress']
+		customer = billing['firstName'] + " " + billing['lastName']
+		status = order['fulfillmentStatus']
+		polymer_order, created = Order.objects.get_or_create(channel="squarespace", customer=customer, number=number, team=team)
+		if created:
+			for line_item in order['lineItems']:
+				name = line_item['productName']
+				quantity = line_item['quantity']
+				sku = line_item['sku']
+				sku_id = line_item['productId']
+				variants = line_item['variantOptions']
+				if len(variants) > 0:
+					name += " -- "
+				for variant in variants:
+					name += variant['value']
+				polymer_sku = ShopifySKU.objects.get_or_create(channel="squarespace", team=team, variant_id=sku_id, variant_sku=sku, name=name)
+				polymer_lineitem = LineItem.objects.get_or_create(order=polymer_order, shopify_sku=polymer_sku, num_units=quantity)
+		# what are the different squarespace order statuses? convert these to i c x
+		polymer_order.status = status
+		polymer_order.save()
+
+	orders = Order.objects.filter(team=team)
+	serializer = OrderSerializer(orders, many=True)
+	return Response(serializer.data)
+
+
+def squarespaceAPIHelper(request, url):
+	team_id = request.query_params.get('team')
+	team = Team.objects.get(pk=team_id)
+	# access_token = "Bearer " + team.squarespace_access_token
+	access_token = "Bearer " + "22fa0d6c-622f-4b64-9ea5-00a34f5c8486"
+	api_url = "https://api.squarespace.com/1.0/commerce/" + url
+	r = requests.get(api_url, headers={"Authorization": access_token})
+	results = json.loads(r.text)
+	if "result" in results and len(results['result']) > 0:
+		return results['result']
+	else:
+		return None
+
+
+
 
 
 # def update_userprofile_token(user_profile, token):
