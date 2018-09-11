@@ -245,11 +245,13 @@ class ProductHistory(generics.ListAPIView):
     # TODO: change to completed_at
     created_amounts = Batch.objects.filter(product__team=team, product=product, status='c').order_by('started_at').values_list('started_at', 'amount')
     for obj in created_amounts:
-      timeline.append({'date': obj[0], 'amount': obj[1], 'message': "created"})
+      if obj[1] != None and obj[1] != 0:
+        timeline.append({'date': obj[0], 'amount': obj[1], 'message': "created"})
     # get all the received/adjusted inventory for this product in order
     received_or_adjusted_amounts = ReceivedInventory.objects.filter(product=product).order_by('received_at').values_list('received_at', 'amount', 'message')
     for obj in received_or_adjusted_amounts:
-      timeline.append({'date': obj[0], 'amount': obj[1], 'message': obj[2]})
+      if obj[1] != None and obj[1] != 0:
+        timeline.append({'date': obj[0], 'amount': obj[1], 'message': obj[2]})
 
     # get all the batches for using this product in order
     used_amounts = Batch.objects.filter(is_trashed=False, status='c')\
@@ -259,12 +261,12 @@ class ProductHistory(generics.ListAPIView):
       .values_list('started_at', 'amt_in_batch')
       # TODO: change to completed_at instead of started_at
     for obj in used_amounts:
-      if obj[1] != None:
+      if obj[1] != None and obj[1] != 0:
         timeline.append({'date': obj[0], 'amount': obj[1], 'message': 'used as an ingredient'})
 
     # get all the currently ongoing batches for this product and get the total amount for that
     ongoing_amount = Batch.objects.filter(product=product, status='i').aggregate(Sum('amount'))['amount__sum']
-    if ongoing_amount != None:
+    if ongoing_amount != None and ongoing_amount != 0:
       timeline.append({'date': datetime.now(), 'amount': ongoing_amount, 'message': 'currently in progress being created'})
 
     # get all the currently ongoing batches that are using this product as a ingredient
@@ -274,7 +276,7 @@ class ProductHistory(generics.ListAPIView):
       .annotate(amt_in_batch=F('amount')*F('ingredient_amount')/F('recipe_batch_size'))\
       .aggregate(Sum('amt_in_batch'))['amt_in_batch__sum']
 
-    if currently_in_use != None:
+    if currently_in_use != None and currently_in_use != 0:
       timeline.append({'date': datetime.now(), 'amount': currently_in_use, 'message': 'currently in progress being used'})
 
 
