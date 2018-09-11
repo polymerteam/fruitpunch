@@ -344,12 +344,24 @@ class OrderList(generics.ListCreateAPIView):
   def get_queryset(self):
     queryset = Order.objects.all()
 
-    status = self.request.query_params.get('status', None)
-    channel = self.request.query_params.get('channel', None)
-    if status is not None:
-      queryset = queryset.filter(status=status)
-    if channel is not None:
-      queryset = queryset.filter(channel=channel)
+    start = self.request.query_params.get('start', None)
+    end = self.request.query_params.get('end', None)
+    if start is not None and end is not None:
+      dt = datetime
+      start_date = pytz.utc.localize(dt.strptime(start, constants.DATE_FORMAT))
+      end_date = pytz.utc.localize(dt.strptime(end, constants.DATE_FORMAT))
+      queryset = queryset.filter(created_at__range=(start_date, end_date))
+
+    # filter by status (i = in progress, c = completed, x = cancelled)
+    status_types = self.request.query_params.get('status_types', None)
+    if status_types is not None:
+      status_types = status_types.strip().split(',')
+      queryset = queryset.filter(status__in=status_types)
+
+    channel_types = self.request.query_params.get('channel_types', None)
+    if channel_types is not None:
+      channel_types = channel_types.strip().split(',')
+      queryset = queryset.filter(channel__in=channel_types)
 
     queryset = teamFilter(queryset, self)
 
