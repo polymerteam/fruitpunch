@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.contrib.postgres.search import SearchVectorField, SearchVector
 from django.utils import timezone
 
 # Create your models here.
@@ -85,6 +86,11 @@ class ReceivedInventory(models.Model):
 	dollar_value = models.DecimalField(max_digits=10, decimal_places=2, null=True)
 	message = models.CharField(max_length=200, blank=True, default="Received Inventory")
 
+class OrderManager(models.Manager):
+	def with_documents(self):
+		vector = SearchVector('name') + \
+		SearchVector('channel')
+		return self.get_queryset().annotate(document=vector)
 
 class Order(models.Model):
 	team = models.ForeignKey(Team, related_name='orders', on_delete=models.CASCADE)
@@ -103,6 +109,24 @@ class Order(models.Model):
 	url = models.CharField(max_length=200, blank=True, null=True)
 	customer = models.CharField(max_length=150, blank=True, null=True)
 	# add in customer name
+	keywords = models.CharField(max_length=200, blank=True)
+	search = SearchVectorField(null=True)
+
+	objects = OrderManager()
+
+	def save(self, *args, **kwargs):
+		self.refreshKeywords()
+		super(Order, self).save(*args, **kwargs)
+		if 'update_fields' not in kwargs or 'search' not in kwargs['update_fields']:
+			instance = self._meta.default_manager.with_documents().filter(pk=self.pk)[0]
+			instance.search = instance.document
+			instance.save(update_fields=['search'])
+
+	def refreshKeywords(self):
+		self.keywords = " ".join([
+			self.name,
+			self.channel,
+		])[:200]
 
 
 class LineItem(models.Model):

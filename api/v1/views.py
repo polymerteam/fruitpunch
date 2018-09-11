@@ -7,6 +7,7 @@ import django_filters
 from rest_framework.filters import OrderingFilter
 from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
+from django.contrib.postgres.search import SearchQuery
 from api.paginations import *
 from api import constants
 from datetime import datetime
@@ -15,7 +16,7 @@ import pytz
 import json
 from rest_framework.decorators import api_view
 from django.conf import settings
-from django.db.models import OuterRef, Subquery
+from django.db.models import OuterRef, Subquery, Q
 from django.db.models.functions import Coalesce
 from rest_framework.decorators import api_view
 from django.contrib.postgres.aggregates.general import ArrayAgg
@@ -344,6 +345,8 @@ class OrderList(generics.ListCreateAPIView):
   def get_queryset(self):
     queryset = Order.objects.all()
 
+    queryset = teamFilter(queryset, self)
+
     start = self.request.query_params.get('start', None)
     end = self.request.query_params.get('end', None)
     if start is not None and end is not None:
@@ -363,7 +366,9 @@ class OrderList(generics.ListCreateAPIView):
       channel_types = channel_types.strip().split(',')
       queryset = queryset.filter(channel__in=channel_types)
 
-    queryset = teamFilter(queryset, self)
+    keywords = self.request.query_params.get('keywords', None)
+    if keywords is not None:
+      queryset = queryset.filter(Q(keywords__icontains=keywords) | Q(search=SearchQuery(keywords)))
 
     return queryset
 
