@@ -368,7 +368,7 @@ class OrderList(generics.ListCreateAPIView):
 
     keywords = self.request.query_params.get('keywords', None)
     if keywords is not None:
-      queryset = queryset.filter(Q(keywords__icontains=keywords) | Q(search=SearchQuery(keywords)))
+      queryset = queryset.filter(Q(name__icontains=keywords) | Q(customer__icontains=keywords))
 
     return queryset
 
