@@ -483,11 +483,15 @@ def getIngredientsForBatches(request):
   return Response(serializer.data)
 
 
-def addIngredientAmountsForProduct(product, amt, ingredient_amount_map):
-  matching_recipe = Recipe.objects.filter(is_trashed=False, product=product).order_by('-created_at').first()
-  if matching_recipe:
+def addProductAmountHelper(item, ingredient_amount_map):
+  product = item.id
+  amt = item.total_amount
+  matching_recipes = Recipe.objects.filter(is_trashed=False, product=product).order_by('-created_at')
+  if matching_recipes.count() > 0:
+    matching_recipe = matching_recipes.first()
     recipe_size = matching_recipe.default_batch_size
     ingredients = Ingredient.objects.filter(recipe=matching_recipe, is_trashed=False)
+    # for each product, get the amounts of the ingredients that are needed to make it
     for ingredient in ingredients:
       added_amt = (ingredient.amount/recipe_size)*amt
       if ingredient.product.id in ingredient_amount_map:
@@ -495,35 +499,33 @@ def addIngredientAmountsForProduct(product, amt, ingredient_amount_map):
       else:
         ingredient_amount_map[ingredient.product.id] = added_amt
   else:
-    # otherwise add the amount of that product
-    if product.id in ingredient_amount_map:
-      ingredient_amount_map[product.id] += amt
+    if product not in ingredient_amount_map:
+      ingredient_amount_map[product] = amt
     else:
-      ingredient_amount_map[product.id] = amt
-
+      ingredient_amount_map[product] += amt
 
 @api_view(['GET'])
 def getIngredientsForOrders(request):
   # get all the amounts required for each product from unfulfilled orders
   team_id = request.query_params.get('team')
   team = Team.objects.get(pk=team_id)
-  orders = Order.objects.filter(status='i', team=team)
+  # get the products from the order line items which use shopify skus
+  orders_by_product = Product.objects.filter(shopify_skus__line_items__order__status='i', team=team)\
+    .annotate(total_num_units=Sum('shopify_skus__line_items__num_units', filter=Q(shopify_skus__line_items__order__status='i')))\
+    .annotate(conversion_factors=Avg('shopify_skus__conversion_factor', filter=Q(shopify_skus__line_items__order__status='i')))\
+    .annotate(total_amount=ExpressionWrapper(F('total_num_units')*F('conversion_factors'), output_field=DecimalField()))
+
+  # get the products from the order line items which use products directly
+  orders_by_product_manual = Product.objects.filter(line_items__order__status='i', team=team)\
+    .annotate(total_num_units=Sum('line_items__amount', filter=Q(line_items__order__status='i')))\
+    .annotate(total_amount=ExpressionWrapper(F('total_num_units'), output_field=DecimalField()))
+
   ingredient_amount_map = {}
-  for order in orders:
-    for line_item in order.line_items.all():
-      # if the line item has a shopify sku
-      if line_item.shopify_sku != None:
-        num_units = line_item.num_units
-        product = line_item.shopify_sku.product
-        conversion_factor = line_item.shopify_sku.conversion_factor
-        # use the shopify sku's matching product
-        if product and conversion_factor:
-          amt = num_units*conversion_factor
-          addIngredientAmountsForProduct(product, amt, ingredient_amount_map)
-        # otherwise, if the line item uses a product directly
-      elif line_item.product != None:
-        amt = line_item.amount
-        addIngredientAmountsForProduct(line_item.product, amt, ingredient_amount_map)
+  for item in orders_by_product:
+    addProductAmountHelper(item, ingredient_amount_map)
+
+  for item in orders_by_product_manual:
+    addProductAmountHelper(item, ingredient_amount_map)
 
   ing_list = []
   # for each needed ingredient, annotate it with how much of it is currently in inventory

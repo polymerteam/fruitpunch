@@ -114,45 +114,6 @@ def getShopifyProducts(request):
 	serializer = ShopifySKUSerializer(queryset, many=True)
 	return Response(serializer.data)
 
-	# response = HttpResponse(json.dumps({"body": body}), content_type="text/plain")
-	# return response;
-@api_view(['GET'])
-def getIngredientsForOrders(request):
-	# get all the amounts required for each product from unfulfilled orders
-	team_id = request.query_params.get('team')
-	team = Team.objects.get(pk=team_id)
-	orders_by_product = Product.objects.filter(shopify_skus__line_items__order__status='i', team=team)\
-		.annotate(total_num_units=Sum('shopify_skus__line_items__num_units', filter=Q(shopify_skus__line_items__order__status='i')))\
-		.annotate(conversion_factors=Avg('shopify_skus__conversion_factor', filter=Q(shopify_skus__line_items__order__status='i')))\
-		.annotate(total_amount=ExpressionWrapper(F('total_num_units')*F('conversion_factors'), output_field=DecimalField()))
-		# .annotate(customer_list=ArrayAgg('shopify_skus__line_items__order__customer', filter=Q(shopify_skus__line_items__order__status='i')))\
-
-	ingredient_amount_map = {}
-	for item in orders_by_product:
-		# the total amount is already the shopify amount multiplied by the shopify to polymer conversion - e.g. 1 orange marmalade on shopify is x polymer orange marmalade units
-		product = item.id
-		amt = item.total_amount
-		matching_recipe = Recipe.objects.filter(is_trashed=False, product=product).order_by('-created_at').first()
-		recipe_size = matching_recipe.default_batch_size
-		ingredients = Ingredient.objects.filter(recipe=matching_recipe, is_trashed=False)
-		# for each product, get the amounts of the ingredients that are needed to make it
-		for ingredient in ingredients:
-			added_amt = (ingredient.amount/recipe_size)*amt
-			if ingredient.product.id in ingredient_amount_map:
-				ingredient_amount_map[ingredient.product.id] += added_amt
-			else:
-				ingredient_amount_map[ingredient.product.id] = added_amt
-	ing_list = []
-	# for each needed ingredient, annotate it with how much of it is currently in inventory
-	for obj in ingredient_amount_map:		
-		qs = annotateProductWithInventory(Product.objects.filter(pk=obj))
-		amount_used = amountUsedOfProduct(obj)
-		inventory_amount = qs[0].received_amount_total - amount_used + qs[0].completed_amount
-		ing_list.append({'product_id': obj, 'amount_needed': ingredient_amount_map[obj], 'amount_in_inventory': inventory_amount})
-
-	serializer = IngredientAmountSerializer(ing_list, many=True)
-	return Response(serializer.data)
-
 @api_view(['GET'])
 def getShopifyOrdersByProduct(request):	
 	order_list = shopifyOrdersByProductHelper(request)
