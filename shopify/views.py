@@ -114,12 +114,6 @@ def getShopifyProducts(request):
 	serializer = ShopifySKUSerializer(queryset, many=True)
 	return Response(serializer.data)
 
-@api_view(['GET'])
-def getShopifyOrdersByProduct(request):	
-	order_list = shopifyOrdersByProductHelper(request)
-	serializer = ShopifyOrderSerializer(order_list, many=True)
-	return Response(serializer.data)
-
 
 def formatCustomerName(order):
 	if 'customer' in order:
@@ -186,74 +180,6 @@ def loadShopifyOrdersIntoPolymer(request):
 	serializer = OrderSerializer(orders, many=True)
 	return Response(serializer.data)
 
-
-def getProductFromSKU(variant_id, team):
-	matching_products = ShopifySKU.objects.filter(variant_id=variant_id, team=team)
-	matching_product_id = None
-	conversion_factor = None
-	if matching_products.count() > 0:
-		matching_product = matching_products.first().product
-		conversion_factor = matching_products.first().conversion_factor
-		if matching_product:
-			matching_product_id = matching_product.id
-	return matching_product_id, conversion_factor
-
-def shopifyOrdersByProductHelper(request):
-	team_id = request.query_params.get('team')
-	team = Team.objects.get(pk=team_id)
-	body = shopifyAPIHelper(request, "admin/orders.json")
-	if 'orders' in body:
-		shopify_orders = body['orders']
-	else:
-		print(body)
-		return []
-	order_map = {}
-	customer_map = {}
-	for order in shopify_orders:
-		customer_name = formatCustomerName(order)
-		for line_item in order['line_items']:
-			variant_id = line_item['variant_id']
-			quantity = line_item['quantity']
-			matching_product, conversion_factor = getProductFromSKU(variant_id, team)
-			if matching_product:
-				if matching_product in order_map:
-					order_map[matching_product] += quantity*conversion_factor
-				else:
-					order_map[matching_product] = quantity*conversion_factor
-					customer_map[matching_product] = []
-				customer_map[matching_product].append(customer_name)
-	order_list = []
-	for obj in order_map:
-		order_list.append({'product_id': obj, 'total_amount': order_map[obj], 'customer_name_list': customer_map[obj]})
-	return order_list
-
-@api_view(['GET'])
-def getShopifyOrders(request):	
-	body = shopifyAPIHelper(request, "admin/orders.json")
-	team_id = request.query_params.get('team')
-	team = Team.objects.get(pk=team_id)
-	shopify_orders = body['orders']
-	order_list = []
-	for order in shopify_orders:
-		customer_name = formatCustomerName(order)
-		order_number = order['order_number']
-		order_name = order['name']
-		order_date = order['created_at']
-		line_item_list = []
-		for line_item in order['line_items']:
-			variant_id = line_item['variant_id']
-			quantity = line_item['quantity']
-			shopify_item_name = line_item['name']
-			matching_product, conversion_factor = getProductFromSKU(variant_id, team)
-			if matching_product:
-				polymer_amount = conversion_factor*quantity
-			else:
-				polymer_amount = None
-			line_item_list.append({'product_id': matching_product, 'shopify_id': variant_id, 'shopify_name': shopify_item_name, 'amount': quantity, 'polymer_amount': polymer_amount})
-		order_list.append({'order_number': order_number, 'order_name': order_name, 'created_at': order_date, 'customer_name': customer_name, 'line_items': line_item_list})
-
-	serializer = ShopifySimpleOrderSerializer(order_list, many=True)
-	return Response(serializer.data)
 
 def shopifyAPIHelper(request, url):
 	team_id = request.query_params.get('team')
