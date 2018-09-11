@@ -7,7 +7,6 @@ import django_filters
 from rest_framework.filters import OrderingFilter
 from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
-from django.contrib.postgres.search import SearchQuery
 from api.paginations import *
 from api import constants
 from datetime import datetime
@@ -483,3 +482,56 @@ def getIngredientsForBatches(request):
   serializer = IngredientAmountSerializer(ing_list, many=True)
   return Response(serializer.data)
 
+
+def addIngredientAmountsForProduct(product, amt, ingredient_amount_map):
+  matching_recipe = Recipe.objects.filter(is_trashed=False, product=product).order_by('-created_at').first()
+  if matching_recipe:
+    recipe_size = matching_recipe.default_batch_size
+    ingredients = Ingredient.objects.filter(recipe=matching_recipe, is_trashed=False)
+    for ingredient in ingredients:
+      added_amt = (ingredient.amount/recipe_size)*amt
+      if ingredient.product.id in ingredient_amount_map:
+        ingredient_amount_map[ingredient.product.id] += added_amt
+      else:
+        ingredient_amount_map[ingredient.product.id] = added_amt
+  else:
+    # otherwise add the amount of that product
+    if product.id in ingredient_amount_map:
+      ingredient_amount_map[product.id] += amt
+    else:
+      ingredient_amount_map[product.id] = amt
+
+
+@api_view(['GET'])
+def getIngredientsForOrders(request):
+  # get all the amounts required for each product from unfulfilled orders
+  team_id = request.query_params.get('team')
+  team = Team.objects.get(pk=team_id)
+  orders = Order.objects.filter(status='i', team=team)
+  ingredient_amount_map = {}
+  for order in orders:
+    for line_item in order.line_items.all():
+      # if the line item has a shopify sku
+      if line_item.shopify_sku != None:
+        num_units = line_item.num_units
+        product = line_item.shopify_sku.product
+        conversion_factor = line_item.shopify_sku.conversion_factor
+        # use the shopify sku's matching product
+        if product and conversion_factor:
+          amt = num_units*conversion_factor
+          addIngredientAmountsForProduct(product, amt, ingredient_amount_map)
+        # otherwise, if the line item uses a product directly
+      elif line_item.product != None:
+        amt = line_item.amount
+        addIngredientAmountsForProduct(line_item.product, amt, ingredient_amount_map)
+
+  ing_list = []
+  # for each needed ingredient, annotate it with how much of it is currently in inventory
+  for obj in ingredient_amount_map:   
+    qs = annotateProductWithInventory(Product.objects.filter(pk=obj))
+    amount_used = amountUsedOfProduct(obj)
+    inventory_amount = qs[0].received_amount_total - amount_used + qs[0].completed_amount
+    ing_list.append({'product_id': obj, 'amount_needed': ingredient_amount_map[obj], 'amount_in_inventory': inventory_amount})
+
+  serializer = IngredientAmountSerializer(ing_list, many=True)
+  return Response(serializer.data)
