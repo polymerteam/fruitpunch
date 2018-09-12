@@ -30,7 +30,7 @@ class Product(models.Model):
 		('fg', 'finished goods'),
 	)
 	team = models.ForeignKey(Team, related_name='products', on_delete=models.CASCADE)
-	name = models.CharField(max_length=50)
+	name = models.CharField(max_length=300)
 	# code = models.CharField(max_length=20)
 	category = models.CharField(max_length=2, choices=PRODUCT_TYPES, default='rm')
 	icon = models.CharField(max_length=50)

@@ -374,6 +374,8 @@ class OrderList(generics.ListCreateAPIView):
     if keywords is not None:
       queryset = queryset.filter(Q(name__icontains=keywords) | Q(customer__icontains=keywords))
 
+    queryset = queryset.order_by('created_at')
+
     return queryset
 
 
@@ -399,6 +401,8 @@ class OrderByProductList(generics.ListAPIView):
     customer_map = {}
     for order in queryset:
       for line_item in order.line_items.all():
+        if line_item.product == None and line_item.shopify_sku == None:
+          continue
         if line_item.product != None:
           product_id = line_item.product.id
           amount = line_item.amount
@@ -409,13 +413,14 @@ class OrderByProductList(generics.ListAPIView):
           if line_item.shopify_sku.product:
             product_id = line_item.shopify_sku.product.id
             amount = line_item.shopify_sku.conversion_factor * line_item.num_units
-        if product_id in order_map:
-          order_map[product_id] += amount
-        else:
-          order_map[product_id] = amount
-          customer_map[product_id] = []
-        if order.customer and order.customer != "":
-          customer_map[product_id].append(order.customer)
+        if product_id != None:
+          if product_id in order_map:
+            order_map[product_id] += amount
+          else:
+            order_map[product_id] = amount
+            customer_map[product_id] = []
+          if order.customer and order.customer != "":
+            customer_map[product_id].append(order.customer)
 
     order_list = []
     for obj in order_map:
