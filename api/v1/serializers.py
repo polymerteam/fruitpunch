@@ -105,11 +105,12 @@ class UserProfileSerializer(serializers.ModelSerializer):
 	last_name = serializers.CharField(source='user.last_name')
 	shopify_access_token = serializers.CharField(source='team.shopify_access_token')
 	squarespace_access_token = serializers.CharField(source='team.squarespace_access_token')
+	shopify_store_name = serializers.CharField(source='team.shopify_store_name')
 	username_display = serializers.CharField(source='get_username_display', read_only=True)
 
 	class Meta:
 		model = UserProfile
-		fields = ('user_id', 'id', 'profile_id', 'username', 'username_display', 'first_name', 'last_name', 'team', 'account_type', 'team_name', 'email', 'shopify_access_token', 'squarespace_access_token', 'username_display')
+		fields = ('user_id', 'id', 'profile_id', 'username', 'username_display', 'first_name', 'last_name', 'team', 'account_type', 'team_name', 'email', 'shopify_access_token', 'shopify_store_name', 'squarespace_access_token', 'username_display')
 
 
 class TeamSerializer(serializers.ModelSerializer):
