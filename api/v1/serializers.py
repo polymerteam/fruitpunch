@@ -24,7 +24,7 @@ class UserLoginSerializer(serializers.ModelSerializer):
 	user_id = serializers.CharField(source='userprofile.user.id')
 	shopify_access_token = serializers.CharField(source='userprofile.team.shopify_access_token')
 	shopify_store_name = serializers.CharField(source='userprofile.team.shopify_store_name')
-	squarespace_access_token = serializers.CharField(source='userprfile.team.squarespace_access_token')
+	squarespace_access_token = serializers.CharField(source='userprofile.team.squarespace_access_token')
 	username_display = serializers.CharField(source='userprofile.get_username_display')
 
 	class Meta:
