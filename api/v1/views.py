@@ -169,6 +169,8 @@ class BatchList(generics.ListCreateAPIView):
       status_types = status_types.strip().split(',')
       queryset = queryset.filter(status__in=status_types)
 
+    queryset = queryset.order_by('started_at')
+
     return queryset
 
 
