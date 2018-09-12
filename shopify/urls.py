@@ -9,6 +9,7 @@ urlpatterns = [
     url(r'^create-auth-token/$', views.createShopifyAuthToken, name='y'),
     url(r'^get-shopify-products/$', views.getShopifyProducts, name='x'),
     url(r'^load-orders-to-polymer/$', views.loadShopifyOrdersIntoPolymer, name='x'),
+    url(r'^load-squarespace-orders/$', views.loadSquarespaceOrdersIntoPolymer, name='x'),
     # url(r'^clear-token/$', views.clearToken, name='b'),
 
 

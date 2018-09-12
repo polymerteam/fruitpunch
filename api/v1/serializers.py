@@ -24,11 +24,12 @@ class UserLoginSerializer(serializers.ModelSerializer):
 	user_id = serializers.CharField(source='userprofile.user.id')
 	shopify_access_token = serializers.CharField(source='userprofile.team.shopify_access_token')
 	shopify_store_name = serializers.CharField(source='userprofile.team.shopify_store_name')
+	squarespace_access_token = serializers.CharField(source='userprofile.team.squarespace_access_token')
 	username_display = serializers.CharField(source='userprofile.get_username_display')
 
 	class Meta:
 		model = User
-		fields = ('user_id', 'profile_id', 'username', 'first_name', 'last_name', 'team', 'account_type', 'team_name', 'shopify_access_token', 'shopify_store_name', 'username_display')
+		fields = ('user_id', 'profile_id', 'username', 'first_name', 'last_name', 'team', 'account_type', 'team_name', 'shopify_access_token', 'shopify_store_name', 'squarespace_access_token', 'username_display')
 
 def sendEmail(userprofile_id):
   userprofile = UserProfile.objects.get(pk=userprofile_id)
@@ -103,23 +104,25 @@ class UserProfileSerializer(serializers.ModelSerializer):
 	first_name = serializers.CharField(source='user.first_name')
 	last_name = serializers.CharField(source='user.last_name')
 	shopify_access_token = serializers.CharField(source='team.shopify_access_token')
+	squarespace_access_token = serializers.CharField(source='team.squarespace_access_token')
+	shopify_store_name = serializers.CharField(source='team.shopify_store_name')
 	username_display = serializers.CharField(source='get_username_display', read_only=True)
 
 	class Meta:
 		model = UserProfile
-		fields = ('user_id', 'id', 'profile_id', 'username', 'username_display', 'first_name', 'last_name', 'team', 'account_type', 'team_name', 'email', 'shopify_access_token', 'username_display')
+		fields = ('user_id', 'id', 'profile_id', 'username', 'username_display', 'first_name', 'last_name', 'team', 'account_type', 'team_name', 'email', 'shopify_access_token', 'shopify_store_name', 'squarespace_access_token', 'username_display')
 
 
 class TeamSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = Team
-		fields = ('id', 'name', 'shopify_store_name', 'shopify_access_token')
+		fields = ('id', 'name', 'shopify_store_name', 'shopify_access_token', 'squarespace_access_token')
 
 
 class ShopifySKUBasicSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = ShopifySKU
-		fields = ('id', 'name', 'variant_id', 'variant_sku', 'product_id', 'conversion_factor', 'team')
+		fields = ('id', 'name', 'variant_id', 'variant_sku', 'product_id', 'conversion_factor', 'channel', 'team')
 
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -145,7 +148,7 @@ class ShopifySKUSerializer(serializers.ModelSerializer):
 	product_id = serializers.PrimaryKeyRelatedField(source='product', queryset=Product.objects.all(), write_only=True)
 	class Meta:
 		model = ShopifySKU
-		fields = ('id', 'name', 'variant_id', 'variant_sku', 'product', 'product_id', 'conversion_factor', 'team')
+		fields = ('id', 'name', 'variant_id', 'variant_sku', 'product', 'product_id', 'conversion_factor', 'channel', 'team')
 
 class IngredientSerializer(serializers.ModelSerializer):
 	product = ProductSerializer(read_only=True)

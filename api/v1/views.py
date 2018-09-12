@@ -91,6 +91,9 @@ class ShopifySKUList(generics.ListCreateAPIView):
 
   def get_queryset(self):
     queryset = ShopifySKU.objects.all()
+    channel = self.request.query_params.get('channel', None)
+    if channel is not None:
+      queryset = queryset.filter(channel=channel)
     return teamFilter(queryset, self)
 
 class ShopifySKUDetail(generics.RetrieveUpdateDestroyAPIView):
@@ -165,6 +168,8 @@ class BatchList(generics.ListCreateAPIView):
     if status_types is not None:
       status_types = status_types.strip().split(',')
       queryset = queryset.filter(status__in=status_types)
+
+    queryset = queryset.order_by('started_at')
 
     return queryset
 
@@ -371,6 +376,8 @@ class OrderList(generics.ListCreateAPIView):
     if keywords is not None:
       queryset = queryset.filter(Q(name__icontains=keywords) | Q(customer__icontains=keywords))
 
+    queryset = queryset.order_by('created_at')
+
     return queryset
 
 
@@ -396,6 +403,8 @@ class OrderByProductList(generics.ListAPIView):
     customer_map = {}
     for order in queryset:
       for line_item in order.line_items.all():
+        if line_item.product == None and line_item.shopify_sku == None:
+          continue
         if line_item.product != None:
           product_id = line_item.product.id
           amount = line_item.amount
@@ -406,13 +415,14 @@ class OrderByProductList(generics.ListAPIView):
           if line_item.shopify_sku.product:
             product_id = line_item.shopify_sku.product.id
             amount = line_item.shopify_sku.conversion_factor * line_item.num_units
-        if product_id in order_map:
-          order_map[product_id] += amount
-        else:
-          order_map[product_id] = amount
-          customer_map[product_id] = []
-        if order.customer and order.customer != "":
-          customer_map[product_id].append(order.customer)
+        if product_id != None:
+          if product_id in order_map:
+            order_map[product_id] += amount
+          else:
+            order_map[product_id] = amount
+            customer_map[product_id] = []
+          if order.customer and order.customer != "":
+            customer_map[product_id].append(order.customer)
 
     order_list = []
     for obj in order_map:
@@ -508,6 +518,7 @@ def addProductAmountHelper(item, ingredient_amount_map):
 
 @api_view(['GET'])
 def getIngredientsForOrders(request):
+  # TODO - add a filter to get the ingredients for orders from a particular channel
   # get all the amounts required for each product from unfulfilled orders
   team_id = request.query_params.get('team')
   team = Team.objects.get(pk=team_id)
