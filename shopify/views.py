@@ -157,8 +157,9 @@ def getOrCreateOrder(orders, status, team):
 			else:
 				main_title = line_item['title']
 				variant_title = line_item['variant_title']
-				if variant_title != '' or len(variant_title.strip()) > 0:
-					main_title = main_title + " - " + variant_title
+				if variant_title != None:
+					if variant_title != '' or len(variant_title.strip()) > 0:
+						main_title = main_title + " - " + variant_title
 				matching_sku = ShopifySKU.objects.create(name=main_title, variant_id=variant_id, team=team, channel='shopify', variant_sku=variant_sku)
 			new_li = LineItem.objects.get_or_create(order=new_order, shopify_sku=matching_sku, num_units=quantity)
 
