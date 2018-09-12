@@ -149,9 +149,17 @@ def getOrCreateOrder(orders, status, team):
 
 		for line_item in order['line_items']:
 			variant_id = line_item['variant_id']
+			variant_sku = line_item['sku']
 			quantity = line_item['quantity']
-			matching_sku = ShopifySKU.objects.filter(variant_id=variant_id, team=team, channel='shopify').first()
-
+			matching_skus = ShopifySKU.objects.filter(variant_id=variant_id, team=team, channel='shopify')
+			if matching_skus.count() > 0:
+				matching_sku = matching_skus.first()
+			else:
+				main_title = line_item['title']
+				variant_title = line_item['variant_title']
+				if variant_title != '' or len(variant_title.strip()) > 0:
+					main_title = main_title + " - " + variant_title
+				matching_sku = ShopifySKU.objects.create(name=main_title, variant_id=variant_id, team=team, channel='shopify', variant_sku=variant_sku)
 			new_li = LineItem.objects.get_or_create(order=new_order, shopify_sku=matching_sku, num_units=quantity)
 
 	return order_ids
