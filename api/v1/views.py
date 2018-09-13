@@ -91,6 +91,9 @@ class ShopifySKUList(generics.ListCreateAPIView):
 
   def get_queryset(self):
     queryset = ShopifySKU.objects.all()
+    channel = self.request.query_params.get('channel', None)
+    if channel is not None:
+      queryset = queryset.filter(channel=channel)
     return teamFilter(queryset, self)
 
 class ShopifySKUDetail(generics.RetrieveUpdateDestroyAPIView):
@@ -173,6 +176,8 @@ class BatchList(generics.ListCreateAPIView):
       status_types = status_types.strip().split(',')
       queryset = queryset.filter(status__in=status_types)
 
+    queryset = queryset.order_by('started_at')
+
     return queryset
 
 
@@ -252,11 +257,13 @@ class ProductHistory(generics.ListAPIView):
     # TODO: change to completed_at
     created_amounts = Batch.objects.filter(product__team=team, product=product, status='c').order_by('started_at').values_list('started_at', 'amount')
     for obj in created_amounts:
-      timeline.append({'date': obj[0], 'amount': obj[1], 'message': "created"})
+      if obj[1] != None and obj[1] != 0:
+        timeline.append({'date': obj[0], 'amount': obj[1], 'message': "created"})
     # get all the received/adjusted inventory for this product in order
     received_or_adjusted_amounts = ReceivedInventory.objects.filter(product=product).order_by('received_at').values_list('received_at', 'amount', 'message')
     for obj in received_or_adjusted_amounts:
-      timeline.append({'date': obj[0], 'amount': obj[1], 'message': obj[2]})
+      if obj[1] != None and obj[1] != 0:
+        timeline.append({'date': obj[0], 'amount': obj[1], 'message': obj[2]})
 
     # get all the batches for using this product in order
     used_amounts = Batch.objects.filter(is_trashed=False, status='c')\
@@ -266,12 +273,12 @@ class ProductHistory(generics.ListAPIView):
       .values_list('started_at', 'amt_in_batch')
       # TODO: change to completed_at instead of started_at
     for obj in used_amounts:
-      if obj[1] != None:
+      if obj[1] != None and obj[1] != 0:
         timeline.append({'date': obj[0], 'amount': obj[1], 'message': 'used as an ingredient'})
 
     # get all the currently ongoing batches for this product and get the total amount for that
     ongoing_amount = Batch.objects.filter(product=product, status='i').aggregate(Sum('amount'))['amount__sum']
-    if ongoing_amount != None:
+    if ongoing_amount != None and ongoing_amount != 0:
       timeline.append({'date': datetime.now(), 'amount': ongoing_amount, 'message': 'currently in progress being created'})
 
     # get all the currently ongoing batches that are using this product as a ingredient
@@ -281,7 +288,7 @@ class ProductHistory(generics.ListAPIView):
       .annotate(amt_in_batch=F('amount')*F('ingredient_amount')/F('recipe_batch_size'))\
       .aggregate(Sum('amt_in_batch'))['amt_in_batch__sum']
 
-    if currently_in_use != None:
+    if currently_in_use != None and currently_in_use != 0:
       timeline.append({'date': datetime.now(), 'amount': currently_in_use, 'message': 'currently in progress being used'})
 
 
@@ -376,6 +383,8 @@ class OrderList(generics.ListCreateAPIView):
     if keywords is not None:
       queryset = queryset.filter(Q(name__icontains=keywords) | Q(customer__icontains=keywords))
 
+    queryset = queryset.order_by('created_at')
+
     return queryset
 
 
@@ -401,6 +410,8 @@ class OrderByProductList(generics.ListAPIView):
     customer_map = {}
     for order in queryset:
       for line_item in order.line_items.all():
+        if line_item.product == None and line_item.shopify_sku == None:
+          continue
         if line_item.product != None:
           product_id = line_item.product.id
           amount = line_item.amount
@@ -411,13 +422,14 @@ class OrderByProductList(generics.ListAPIView):
           if line_item.shopify_sku.product:
             product_id = line_item.shopify_sku.product.id
             amount = line_item.shopify_sku.conversion_factor * line_item.num_units
-        if product_id in order_map:
-          order_map[product_id] += amount
-        else:
-          order_map[product_id] = amount
-          customer_map[product_id] = []
-        if order.customer and order.customer != "":
-          customer_map[product_id].append(order.customer)
+        if product_id != None:
+          if product_id in order_map:
+            order_map[product_id] += amount
+          else:
+            order_map[product_id] = amount
+            customer_map[product_id] = []
+          if order.customer and order.customer != "":
+            customer_map[product_id].append(order.customer)
 
     order_list = []
     for obj in order_map:
@@ -490,11 +502,15 @@ def getIngredientsForBatches(request):
   return Response(serializer.data)
 
 
-def addIngredientAmountsForProduct(product, amt, ingredient_amount_map):
-  matching_recipe = Recipe.objects.filter(is_trashed=False, product=product).order_by('-created_at').first()
-  if matching_recipe:
+def addProductAmountHelper(item, ingredient_amount_map):
+  product = item.id
+  amt = item.total_amount
+  matching_recipes = Recipe.objects.filter(is_trashed=False, product=product).order_by('-created_at')
+  if matching_recipes.count() > 0:
+    matching_recipe = matching_recipes.first()
     recipe_size = matching_recipe.default_batch_size
     ingredients = Ingredient.objects.filter(recipe=matching_recipe, is_trashed=False)
+    # for each product, get the amounts of the ingredients that are needed to make it
     for ingredient in ingredients:
       added_amt = (ingredient.amount/recipe_size)*amt
       if ingredient.product.id in ingredient_amount_map:
@@ -502,35 +518,34 @@ def addIngredientAmountsForProduct(product, amt, ingredient_amount_map):
       else:
         ingredient_amount_map[ingredient.product.id] = added_amt
   else:
-    # otherwise add the amount of that product
-    if product.id in ingredient_amount_map:
-      ingredient_amount_map[product.id] += amt
+    if product not in ingredient_amount_map:
+      ingredient_amount_map[product] = amt
     else:
-      ingredient_amount_map[product.id] = amt
-
+      ingredient_amount_map[product] += amt
 
 @api_view(['GET'])
 def getIngredientsForOrders(request):
+  # TODO - add a filter to get the ingredients for orders from a particular channel
   # get all the amounts required for each product from unfulfilled orders
   team_id = request.query_params.get('team')
   team = Team.objects.get(pk=team_id)
-  orders = Order.objects.filter(status='i', team=team)
+  # get the products from the order line items which use shopify skus
+  orders_by_product = Product.objects.filter(shopify_skus__line_items__order__status='i', team=team)\
+    .annotate(total_num_units=Sum('shopify_skus__line_items__num_units', filter=Q(shopify_skus__line_items__order__status='i')))\
+    .annotate(conversion_factors=Avg('shopify_skus__conversion_factor', filter=Q(shopify_skus__line_items__order__status='i')))\
+    .annotate(total_amount=ExpressionWrapper(F('total_num_units')*F('conversion_factors'), output_field=DecimalField()))
+
+  # get the products from the order line items which use products directly
+  orders_by_product_manual = Product.objects.filter(line_items__order__status='i', team=team)\
+    .annotate(total_num_units=Sum('line_items__amount', filter=Q(line_items__order__status='i')))\
+    .annotate(total_amount=ExpressionWrapper(F('total_num_units'), output_field=DecimalField()))
+
   ingredient_amount_map = {}
-  for order in orders:
-    for line_item in order.line_items.all():
-      # if the line item has a shopify sku
-      if line_item.shopify_sku != None:
-        num_units = line_item.num_units
-        product = line_item.shopify_sku.product
-        conversion_factor = line_item.shopify_sku.conversion_factor
-        # use the shopify sku's matching product
-        if product and conversion_factor:
-          amt = num_units*conversion_factor
-          addIngredientAmountsForProduct(product, amt, ingredient_amount_map)
-        # otherwise, if the line item uses a product directly
-      elif line_item.product != None:
-        amt = line_item.amount
-        addIngredientAmountsForProduct(line_item.product, amt, ingredient_amount_map)
+  for item in orders_by_product:
+    addProductAmountHelper(item, ingredient_amount_map)
+
+  for item in orders_by_product_manual:
+    addProductAmountHelper(item, ingredient_amount_map)
 
   ing_list = []
   # for each needed ingredient, annotate it with how much of it is currently in inventory

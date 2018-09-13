@@ -24,25 +24,6 @@ class IngredientAmountSerializer(serializers.Serializer):
 		return ProductSerializer(Product.objects.get(pk=obj['product_id'])).data
 
 
-class ShopifySimpleOrderSerializer(serializers.Serializer):
-	order_number = serializers.IntegerField()
-	order_name = serializers.CharField()
-	customer_name = serializers.CharField()
-	line_items = serializers.SerializerMethodField()
-	created_at = serializers.DateTimeField()
-
-	def get_line_items(self, obj):
-		line_item_list = []
-		for item in obj['line_items']:
-			if item['product_id'] != None:
-				product = ProductSerializer(Product.objects.get(pk=item['product_id'])).data
-			else:
-				product = None
-			amount = item['amount']
-			line_item_list.append({'product': product, 'shopify_id': item['shopify_id'], 'shopify_name': item['shopify_name'], 'amount': amount, 'polymer_amount': item['polymer_amount']})
-		return line_item_list
-
-
 
 
 

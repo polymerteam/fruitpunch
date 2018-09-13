@@ -7,7 +7,7 @@ from api.models import *
 from api.v1.views import *
 # from api.v1.serializers import *
 from shopify.serializers import *
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseForbidden
 from requests_oauthlib import OAuth2Session, TokenUpdated
 from django.conf import settings
 from rest_framework.decorators import api_view
@@ -92,9 +92,9 @@ def getShopifyProducts(request):
 				variant_title = main_title + " - " + variant['title']
 			variant_id = variant['id']
 			variant_sku = variant['sku']
-			shopifysku = ShopifySKU.objects.filter(variant_id=variant_id, team=team)
+			shopifysku = ShopifySKU.objects.filter(variant_id=variant_id, team=team, channel='shopify')
 			if shopifysku.count() == 0:
-				ShopifySKU.objects.create(name=variant_title, variant_id=variant_id, variant_sku=variant_sku, team=team)
+				ShopifySKU.objects.create(name=variant_title, variant_id=variant_id, variant_sku=variant_sku, team=team, channel='shopify')
 			else:
 				sp = shopifysku.first()
 				was_updated = False
@@ -110,53 +110,8 @@ def getShopifyProducts(request):
 				if was_updated:
 					sp.save()
 	# filter by team
-	queryset = ShopifySKU.objects.all().order_by('id')
+	queryset = ShopifySKU.objects.filter(team=team, channel='shopify').order_by('id')
 	serializer = ShopifySKUSerializer(queryset, many=True)
-	return Response(serializer.data)
-
-	# response = HttpResponse(json.dumps({"body": body}), content_type="text/plain")
-	# return response;
-@api_view(['GET'])
-def getIngredientsForOrders(request):
-	# get all the amounts required for each product from unfulfilled orders
-	team_id = request.query_params.get('team')
-	team = Team.objects.get(pk=team_id)
-	orders_by_product = Product.objects.filter(shopify_skus__line_items__order__status='i', team=team)\
-		.annotate(total_num_units=Sum('shopify_skus__line_items__num_units', filter=Q(shopify_skus__line_items__order__status='i')))\
-		.annotate(conversion_factors=Avg('shopify_skus__conversion_factor', filter=Q(shopify_skus__line_items__order__status='i')))\
-		.annotate(total_amount=ExpressionWrapper(F('total_num_units')*F('conversion_factors'), output_field=DecimalField()))
-		# .annotate(customer_list=ArrayAgg('shopify_skus__line_items__order__customer', filter=Q(shopify_skus__line_items__order__status='i')))\
-
-	ingredient_amount_map = {}
-	for item in orders_by_product:
-		# the total amount is already the shopify amount multiplied by the shopify to polymer conversion - e.g. 1 orange marmalade on shopify is x polymer orange marmalade units
-		product = item.id
-		amt = item.total_amount
-		matching_recipe = Recipe.objects.filter(is_trashed=False, product=product).order_by('-created_at').first()
-		recipe_size = matching_recipe.default_batch_size
-		ingredients = Ingredient.objects.filter(recipe=matching_recipe, is_trashed=False)
-		# for each product, get the amounts of the ingredients that are needed to make it
-		for ingredient in ingredients:
-			added_amt = (ingredient.amount/recipe_size)*amt
-			if ingredient.product.id in ingredient_amount_map:
-				ingredient_amount_map[ingredient.product.id] += added_amt
-			else:
-				ingredient_amount_map[ingredient.product.id] = added_amt
-	ing_list = []
-	# for each needed ingredient, annotate it with how much of it is currently in inventory
-	for obj in ingredient_amount_map:		
-		qs = annotateProductWithInventory(Product.objects.filter(pk=obj))
-		amount_used = amountUsedOfProduct(obj)
-		inventory_amount = qs[0].received_amount_total - amount_used + qs[0].completed_amount
-		ing_list.append({'product_id': obj, 'amount_needed': ingredient_amount_map[obj], 'amount_in_inventory': inventory_amount})
-
-	serializer = IngredientAmountSerializer(ing_list, many=True)
-	return Response(serializer.data)
-
-@api_view(['GET'])
-def getShopifyOrdersByProduct(request):	
-	order_list = shopifyOrdersByProductHelper(request)
-	serializer = ShopifyOrderSerializer(order_list, many=True)
 	return Response(serializer.data)
 
 
@@ -194,9 +149,18 @@ def getOrCreateOrder(orders, status, team):
 
 		for line_item in order['line_items']:
 			variant_id = line_item['variant_id']
+			variant_sku = line_item['sku']
 			quantity = line_item['quantity']
-			matching_sku = ShopifySKU.objects.filter(variant_id=variant_id, team=team).first()
-
+			matching_skus = ShopifySKU.objects.filter(variant_id=variant_id, team=team, channel='shopify')
+			if matching_skus.count() > 0:
+				matching_sku = matching_skus.first()
+			else:
+				main_title = line_item['title']
+				variant_title = line_item['variant_title']
+				if variant_title != None:
+					if variant_title != '' or len(variant_title.strip()) > 0:
+						main_title = main_title + " - " + variant_title
+				matching_sku = ShopifySKU.objects.create(name=main_title, variant_id=variant_id, team=team, channel='shopify', variant_sku=variant_sku)
 			new_li = LineItem.objects.get_or_create(order=new_order, shopify_sku=matching_sku, num_units=quantity)
 
 	return order_ids
@@ -226,74 +190,6 @@ def loadShopifyOrdersIntoPolymer(request):
 	return Response(serializer.data)
 
 
-def getProductFromSKU(variant_id, team):
-	matching_products = ShopifySKU.objects.filter(variant_id=variant_id, team=team)
-	matching_product_id = None
-	conversion_factor = None
-	if matching_products.count() > 0:
-		matching_product = matching_products.first().product
-		conversion_factor = matching_products.first().conversion_factor
-		if matching_product:
-			matching_product_id = matching_product.id
-	return matching_product_id, conversion_factor
-
-def shopifyOrdersByProductHelper(request):
-	team_id = request.query_params.get('team')
-	team = Team.objects.get(pk=team_id)
-	body = shopifyAPIHelper(request, "admin/orders.json")
-	if 'orders' in body:
-		shopify_orders = body['orders']
-	else:
-		print(body)
-		return []
-	order_map = {}
-	customer_map = {}
-	for order in shopify_orders:
-		customer_name = formatCustomerName(order)
-		for line_item in order['line_items']:
-			variant_id = line_item['variant_id']
-			quantity = line_item['quantity']
-			matching_product, conversion_factor = getProductFromSKU(variant_id, team)
-			if matching_product:
-				if matching_product in order_map:
-					order_map[matching_product] += quantity*conversion_factor
-				else:
-					order_map[matching_product] = quantity*conversion_factor
-					customer_map[matching_product] = []
-				customer_map[matching_product].append(customer_name)
-	order_list = []
-	for obj in order_map:
-		order_list.append({'product_id': obj, 'total_amount': order_map[obj], 'customer_name_list': customer_map[obj]})
-	return order_list
-
-@api_view(['GET'])
-def getShopifyOrders(request):	
-	body = shopifyAPIHelper(request, "admin/orders.json")
-	team_id = request.query_params.get('team')
-	team = Team.objects.get(pk=team_id)
-	shopify_orders = body['orders']
-	order_list = []
-	for order in shopify_orders:
-		customer_name = formatCustomerName(order)
-		order_number = order['order_number']
-		order_name = order['name']
-		order_date = order['created_at']
-		line_item_list = []
-		for line_item in order['line_items']:
-			variant_id = line_item['variant_id']
-			quantity = line_item['quantity']
-			shopify_item_name = line_item['name']
-			matching_product, conversion_factor = getProductFromSKU(variant_id, team)
-			if matching_product:
-				polymer_amount = conversion_factor*quantity
-			else:
-				polymer_amount = None
-			line_item_list.append({'product_id': matching_product, 'shopify_id': variant_id, 'shopify_name': shopify_item_name, 'amount': quantity, 'polymer_amount': polymer_amount})
-		order_list.append({'order_number': order_number, 'order_name': order_name, 'created_at': order_date, 'customer_name': customer_name, 'line_items': line_item_list})
-
-	serializer = ShopifySimpleOrderSerializer(order_list, many=True)
-	return Response(serializer.data)
-
 def shopifyAPIHelper(request, url):
 	team_id = request.query_params.get('team')
 	team = Team.objects.get(pk=team_id)
@@ -322,6 +218,62 @@ def shopifyAPIHelper(request, url):
 	r1 = shopify.get(api_url, headers=extra_params)
 	body = json.loads(r1.content)
 	return body
+
+
+
+@api_view(['GET'])
+def loadSquarespaceOrdersIntoPolymer(request):
+	team_id = request.query_params.get('team')
+	team = Team.objects.get(pk=team_id)
+
+	# get all open orders
+	orders = squarespaceAPIHelper(request, "orders")
+	if orders == None:
+		serializer = OrderSerializer(Order.objects.none(), many=True)
+		return Response(serializer.data)
+	for order in orders:
+		number = order['orderNumber']
+		billing = order['billingAddress']
+		customer = billing['firstName'] + " " + billing['lastName']
+		status = order['fulfillmentStatus']
+		polymer_order, created = Order.objects.get_or_create(channel="squarespace", customer=customer, number=number, team=team)
+		if created:
+			for line_item in order['lineItems']:
+				name = line_item['productName']
+				quantity = line_item['quantity']
+				sku = line_item['sku']
+				sku_id = line_item['productId']
+				variants = line_item['variantOptions']
+				if len(variants) > 0:
+					name += " -- "
+				for variant in variants:
+					name += variant['value']
+				polymer_sku = ShopifySKU.objects.get_or_create(channel="squarespace", team=team, variant_id=sku_id, variant_sku=sku, name=name)
+				polymer_lineitem = LineItem.objects.get_or_create(order=polymer_order, shopify_sku=polymer_sku, num_units=quantity)
+		# what are the different squarespace order statuses? convert these to i c x
+		polymer_order.status = status
+		polymer_order.save()
+
+	orders = Order.objects.filter(team=team)
+	serializer = OrderSerializer(orders, many=True)
+	return Response(serializer.data)
+
+
+def squarespaceAPIHelper(request, url):
+	team_id = request.query_params.get('team')
+	team = Team.objects.get(pk=team_id)
+	# access_token = "Bearer " + team.squarespace_access_token
+	access_token = "Bearer " + "22fa0d6c-622f-4b64-9ea5-00a34f5c8486"
+	api_url = "https://api.squarespace.com/1.0/commerce/" + url
+	r = requests.get(api_url, headers={"Authorization": access_token})
+	results = json.loads(r.text)
+	if "result" in results and len(results['result']) > 0:
+		return results['result']
+	else:
+		return None
+
+
+
 
 
 # def update_userprofile_token(user_profile, token):
