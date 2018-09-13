@@ -110,7 +110,7 @@ def getShopifyProducts(request):
 				if was_updated:
 					sp.save()
 	# filter by team
-	queryset = ShopifySKU.objects.all()
+	queryset = ShopifySKU.objects.all().order_by('id')
 	serializer = ShopifySKUSerializer(queryset, many=True)
 	return Response(serializer.data)
 
