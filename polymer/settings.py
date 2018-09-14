@@ -110,11 +110,11 @@ WSGI_APPLICATION = 'polymer.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'polymer', #os.environ.get("WAFFLE_DB_NAME", ''),
-        'USER': 'matt', #os.environ.get("WAFFLE_DB_USER", ''),
-        'PASSWORD': '', #os.environ.get("WAFFLE_DB_PASSWORD", ''),
-        'HOST': 'localhost', #os.environ.get("WAFFLE_DB_HOST", ''),
-        'PORT': '5432', #os.environ.get("WAFFLE_DB_PORT", ''),
+        'NAME': os.environ.get("FRUIT_DB_NAME", ''),
+        'USER': os.environ.get("FRUIT_DB_USER", ''),
+        'PASSWORD': os.environ.get("FRUIT_DB_PASSWORD", ''),
+        'HOST': os.environ.get("FRUIT_DB_HOST", ''),
+        'PORT': os.environ.get("FRUIT_DB_PORT", ''),
     }
 }
 # db_from_env = dj_database_url.config(conn_max_age=500, require_ssl=True)
