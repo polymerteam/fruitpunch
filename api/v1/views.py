@@ -96,16 +96,10 @@ class ShopifySKUList(generics.ListCreateAPIView):
       queryset = queryset.filter(channel=channel)
     return teamFilter(queryset, self)
 
+
 class ShopifySKUDetail(generics.RetrieveUpdateDestroyAPIView):
   queryset = ShopifySKU.objects.all()
   serializer_class = ShopifySKUSerializer
-
-  def patch(self, request, *args, **kwargs):
-    pk = kwargs['pk']
-    product = request.data['product']
-    conversion_factor = request.data['conversion_factor']
-    ShopifySKU.objects.filter(pk=pk).update(product=product, conversion_factor=conversion_factor)
-    return super(ShopifySKUDetail, self).patch(request, *args, **kwargs)
 
 
 class RecipeList(generics.ListCreateAPIView):
