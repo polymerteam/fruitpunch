@@ -96,7 +96,6 @@ class ShopifySKUList(generics.ListCreateAPIView):
       queryset = queryset.filter(channel=channel)
     return teamFilter(queryset, self)
 
-
 class ShopifySKUDetail(generics.RetrieveUpdateDestroyAPIView):
   queryset = ShopifySKU.objects.all()
   serializer_class = ShopifySKUSerializer
