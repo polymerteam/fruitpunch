@@ -19,6 +19,7 @@ class UserProfile(models.Model):
 	team = models.ForeignKey(Team, related_name='userprofiles', on_delete=models.CASCADE, null=True)
 	account_type = models.CharField(max_length=1, choices=USERTYPES, default='a')
 	email = models.TextField(null=True)
+	finished_onboarding = models.BooleanField(default=False)
 
 	def get_username_display(self):
 		username_pieces = self.user.username.rsplit('_', 1)
