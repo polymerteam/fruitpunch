@@ -496,8 +496,8 @@ def getIngredientsForBatches(request):
 
 
 def addProductAmountHelper(item, ingredient_amount_map):
-  product = item.id
-  amt = item.total_amount
+  product = item['id']
+  amt = item['total_amount']
   matching_recipes = Recipe.objects.filter(is_trashed=False, product=product).order_by('-created_at')
   if matching_recipes.count() > 0:
     matching_recipe = matching_recipes.first()
@@ -515,6 +515,22 @@ def addProductAmountHelper(item, ingredient_amount_map):
       ingredient_amount_map[product] = amt
     else:
       ingredient_amount_map[product] += amt
+
+
+def updateIngredientAmountMapForProducts(products, ingredient_amount_map, seen_products):
+  for item in products:
+    amt = item.total_amount
+    if item.id not in seen_products:
+      # subtract the amount of this product that is currently sitting in inventory if we haven't needed it before for an order
+      qs = annotateProductWithInventory(Product.objects.filter(pk=item.id))
+      amount_used = amountUsedOfProduct(item.id)
+      inventory_amount = qs[0].received_amount_total - amount_used + qs[0].completed_amount
+      amt -= inventory_amount
+      seen_products.append(item.id)
+    product_obj = {'id': item.id, 'total_amount': amt}
+    addProductAmountHelper(product_obj, ingredient_amount_map)
+  return
+
 
 @api_view(['GET'])
 def getIngredientsForOrders(request):
@@ -534,11 +550,9 @@ def getIngredientsForOrders(request):
     .annotate(total_amount=ExpressionWrapper(F('total_num_units'), output_field=DecimalField()))
 
   ingredient_amount_map = {}
-  for item in orders_by_product:
-    addProductAmountHelper(item, ingredient_amount_map)
-
-  for item in orders_by_product_manual:
-    addProductAmountHelper(item, ingredient_amount_map)
+  seen_products = []
+  updateIngredientAmountMapForProducts(orders_by_product, ingredient_amount_map, seen_products)
+  updateIngredientAmountMapForProducts(orders_by_product_manual, ingredient_amount_map, seen_products)
 
   ing_list = []
   # for each needed ingredient, annotate it with how much of it is currently in inventory
